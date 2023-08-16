@@ -58,11 +58,13 @@ class PathManage:
 
 class Description:
 
-    def __init__(self, input_data=None, output_data=None, func=None, path=None):
+    def __init__(self, input_data=None, output_data=None, func=None, path=None, ienum=None, oenum=None):
         self.__input_data = input_data
         self.__output_data = output_data
         self.__func = func
         self.__path = path
+        self.__ienum = ienum
+        self.__oenum = oenum
     
     @property
     def input_data(self):
@@ -95,14 +97,30 @@ class Description:
     @path.setter
     def path(self, x):
         self.__path = x
+    
+    @property
+    def ienum(self):
+        return self.__ienum
+    
+    @property
+    def oenum(self):
+        return self.__oenum
+    
+    @ienum.setter
+    def ienum(self, x):
+        self.__ienum = x
+    
+    @oenum.setter
+    def oenum(self, x):
+        self.__oenum = x
 
 def write_as_json(desc: Description):
     paths = PathManage()
     jsondata = {
         "function": desc.func,
         "path": desc.path,
-        "input_data": desc.input_data.tolist() if type(desc.input_data) is np.ndarray else desc.input_data,
-        "output_data": desc.output_data.tolist() if type(desc.output_data) is np.ndarray else desc.output_data
+        "input_data": {f"{desc.ienum}": desc.input_data.tolist() if type(desc.input_data) is np.ndarray else desc.input_data},
+        "output_data": {f"{desc.oenum}": desc.output_data.tolist() if type(desc.output_data) is np.ndarray else desc.output_data}
     }
     path = paths.path(desc.path)
     path = os.path.join(path, desc.func)

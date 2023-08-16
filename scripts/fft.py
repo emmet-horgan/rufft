@@ -16,6 +16,7 @@ def gen_fft_sine_data():
     desc = Description()
     desc.path  = PATH
     desc.input_data = input_data
+    desc.ienum = "Array"
     desc.output_data = fft(input_data)
 
     mag = np.abs(desc.output_data)
@@ -25,6 +26,7 @@ def gen_fft_sine_data():
         "mag": mag.tolist(),
         "phase": phase.tolist()
     }
+    desc.oenum = "ComplexVals"
 
     desc.func = "fft"
 
@@ -44,9 +46,10 @@ def gen_fftfreq_data():
         "n": n,
         "d": d
     }
+    
 
     output_data = fftfreq(n, d)
-    desc = Description(input_data=input_data, output_data=output_data, func=func, path=PATH)
+    desc = Description(input_data=input_data, output_data=output_data, func=func, path=PATH, ienum="FftFreqVals", oenum="Array")
     write_as_json(desc)
 
      

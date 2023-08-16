@@ -16,8 +16,9 @@ def gen_sine_freq_data():
     desc.input_data = {
         "fsine": fsine,
         "fsample": fsample,
-        "duration": duration 
+        "duration": duration      
     }
+    desc.ienum = "SineFreqVals"
     desc.path = PATH
     desc.func = func
     desc.output_data = gen_sine_data(fsine, fsample, duration)
@@ -29,6 +30,8 @@ def gen_sine_freq_data():
     plt.xlabel("Time", **axesspec)
     plt.show()
 
+    desc.output_data = desc.output_data
+    desc.oenum = "Array"
     write_as_json(desc)
 
 def gen_raw_sine_data():
@@ -45,7 +48,9 @@ def gen_raw_sine_data():
 
     desc = Description()
     desc.input_data = input_data
+    desc.ienum = "Array"
     desc.output_data = output_data
+    desc.oenum = "Array"
     desc.func = func
     desc.path = PATH
 
@@ -78,7 +83,9 @@ def gen_sinc_data():
 
     desc = Description()
     desc.input_data = input_data
+    desc.ienum = "Array"
     desc.output_data = output_data
+    desc.oenum = "Array"
     desc.func = func
     desc.path = PATH
 
