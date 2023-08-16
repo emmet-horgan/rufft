@@ -117,6 +117,20 @@ where
     }
 }
 
+pub fn fft_pf<T>(x: &Array1<T>) -> Array1<Complex<T>> 
+where 
+    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+{
+    std::unimplemented!();
+}
+
+pub fn ifft_ct<T>(x: &Array1<Complex<T>>) -> Array1<T> 
+where 
+    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+{
+    std::unimplemented!();
+}
+
 pub fn zero_pad<T>(x: &Array1<T>, ) -> Option<Array1<T>> 
 where 
     T: Float + FromPrimitive
@@ -147,27 +161,46 @@ where
 #[macro_export]
 macro_rules! fft {
     ($x:expr) => {
-        match ft::zero_pad(&$x) {
+        match fft::zero_pad(&$x) {
             None => {
-                ft::fft_ct(&$x)
+                fft::fft_ct(&$x)
             },
             Some(x) => {
-                let tmp = ft::fft_ct(&x);
-                tmp.slice(s![..$x.len()]).to_owned()
+                fft::dft(&$x)
             }
         }
+    };
+
+    ($x:expr, $cfg:expr) => {
+        match fft::zero_pad(&$x) {
+            None => {
+                fft::fft_ct(&$x)
+            },
+            Some(x) => {
+                let tmp = fft::fft_ct(&x);
+                tmp.slice(s![..$x.len()]).to_owned() // Maybe remove this line ?
+            }
+        }
+        
+    }
+}
+
+#[macro_export]
+macro_rules! ifft {
+    ($x:expr) => {
+        std::unimplemented!();
     };
 }
 
 #[macro_export]
 macro_rules! fftfreq {
     ($x:expr, $t:expr) => {
-        match ft::zero_pad(&$x) {
+        match fft::zero_pad(&$x) {
             None => {
-                ft::fftfreq($x.len(), $t)
+                fft::fftfreq($x.len(), $t)
             }
             Some(x) => {
-                ft::fftfreq(x.len(), $t) // Not sure if this is correct
+                fft::fftfreq(x.len(), $t) // Not sure if this is correct
             }
         }
     };
@@ -175,10 +208,36 @@ macro_rules! fftfreq {
 
 #[cfg(test)]
 mod tests {
+    use crate::fft;
+    use crate::io;
+    use ndarray::prelude::*;
+    use num_complex::Complex;
 
     #[test]
     fn dft_sine() {
-        std::unimplemented!();
+        let json_data = io::read_json("datasets/fft/fft/fft.json");
+        let output: Array1<Complex<f64>>;
+        let epsilon = 1E-10;
+        match json_data.input_data {
+            io::Data::<f64>::Array(input) => {
+                let input: Array1<f64> = Array1::from_vec(input);
+                output = fft!(&input);
+            }
+            _ => {panic!()}
+        }
+        match json_data.output_data {
+            io::Data::ComplexVals { mag, phase} => {
+                for i in 0..mag.len() {
+                    let mag_calc = output[i].norm();
+                    let phase_calc = output[i].arg();
+                    let percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
+                    //assert!(percentage < epsilon);
+                    let percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
+                    assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
+                }
+            }
+            _ => {panic!()}
+        }
     }
 
     #[test]

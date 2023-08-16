@@ -25,23 +25,24 @@ pub fn zero_crossing() {
 }
 
 impl<T> crate::traits::Stats for Array1<T> {
-    fn mean(&self) -> f64 {
+    type Elements = T;
+    fn mean(&self) -> T {
         std::unimplemented!();
     }
 
-    fn variance(&self) -> f64 {
+    fn variance(&self) -> T {
         std::unimplemented!();
     }
     
-    fn stdev(&self) -> f64 {
+    fn stdev(&self) -> T {
         std::unimplemented!();
     }
 
-    fn skewness(&self) -> f64 {
+    fn skewness(&self) -> T {
         std::unimplemented!();
     }
     
-    fn kurtosis(&self) -> f64 {
+    fn kurtosis(&self) -> T {
         std::unimplemented!();
     }
 
@@ -67,11 +68,6 @@ mod tests {
     
     #[test]
     fn peak_detection() {
-        std::unimplemented!();
-    }
-    
-    #[test]
-    fn cross_correlation() {
         std::unimplemented!();
     }
     

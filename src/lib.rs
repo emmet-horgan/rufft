@@ -7,7 +7,7 @@ pub mod tfa;
 pub mod inspect;
 pub mod convolvex;
 pub mod traits;
-
+pub mod io;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

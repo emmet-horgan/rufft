@@ -1,8 +1,10 @@
 pub trait Stats {
-    fn mean(&self) -> f64;
-    fn variance(&self) -> f64;
-    fn stdev(&self) -> f64;
-    fn skewness(&self) -> f64;
-    fn kurtosis(&self) -> f64;
+    type Elements;
+
+    fn mean(&self) -> Self::Elements;
+    fn variance(&self) -> Self::Elements;
+    fn stdev(&self) -> Self::Elements;
+    fn skewness(&self) -> Self::Elements;
+    fn kurtosis(&self) -> Self::Elements;
     fn histogram(&self);
 }
