@@ -1,3 +1,4 @@
+#![allow(non_snake_case)]
 use ndarray::{prelude::*};
 use num_complex::{Complex};
 use num_traits::float::Float;
@@ -208,6 +209,10 @@ macro_rules! fftfreq {
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
+    #[allow(dead_code)]
+    #[allow(unused_variables)]
+
     use crate::fft;
     use crate::io;
     use ndarray::prelude::*;
@@ -218,6 +223,8 @@ mod tests {
         let json_data = io::read_json("datasets/fft/fft/fft.json");
         let output: Array1<Complex<f64>>;
         let epsilon = 1E-10;
+        let mut max_mag_error: f64 = 0.0;
+        let mut max_phase_error: f64 = 0.0;
         match json_data.input_data {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
@@ -230,11 +237,33 @@ mod tests {
                 for i in 0..mag.len() {
                     let mag_calc = output[i].norm();
                     let phase_calc = output[i].arg();
-                    let percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
-                    //assert!(percentage < epsilon);
-                    let percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
+                    let percentage_mag: f64;
+                    let percentage_phase: f64;
+                    if (mag[i] == f64::from(0.0)) || (mag_calc == f64::from(0.0)) {
+                        percentage_mag = (mag[i] - mag_calc).abs();
+                    } 
+                    else {
+                        percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
+                    }
+                    if (phase[i] == f64::from(0.0)) || (phase_calc == f64::from(0.0)) {
+                        percentage_phase = (phase[i] - phase_calc).abs();
+                    } 
+                    else {
+                        percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
+                    }
+                    if percentage_mag > max_mag_error {
+                        max_mag_error = percentage_mag;
+                    }
+                    if percentage_phase > max_phase_error {
+                        max_phase_error = percentage_phase;
+                    }
+                    if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
+                    assert!(false)
+                    }
                     assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
                 }
+                println!("Maximum % magnitude error: {}", max_mag_error);
+                println!("Maximum % phase error: {}", max_phase_error);
             }
             _ => {panic!()}
         }

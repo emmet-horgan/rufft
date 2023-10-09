@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serde_json;
-use ndarray::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::env;
 use std::fs;
 use walkdir::{DirEntry, WalkDir};
 
+#[allow(dead_code)]
 
 struct PathManage {
     _root: PathBuf

@@ -9,7 +9,7 @@ def gen_fft_sine_data():
     
     # Arbitrary values
     fsine = 2.0
-    fsample = 100.0
+    fsample = 128.0  # Power of two
     duration = 8.0
 
     input_data = gen_sine_data(fsine, fsample, duration)
