@@ -1,26 +1,28 @@
 #![allow(non_snake_case)]
 use ndarray::{prelude::*};
 use num_complex::{Complex};
-use num_traits::float::Float;
-use num_traits::cast::FromPrimitive;
+use crate::traits::SigVal;
+use num_traits::float;
+use num_traits::cast::{AsPrimitive, FromPrimitive};
 
 pub fn dft<T>(x: &Array1<T>) -> Array1<Complex<T>>
-where 
-    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+where
+    T: SigVal,
+    usize: AsPrimitive<T>
 {
 
     let N = x.len();
-    let N_t = T::from_usize(N).unwrap();
-    let twopi: T = T::from_f64(std::f64::consts::PI * 2.0).unwrap();
-    let zero = T::from_f32(0.0).unwrap();
+    let N_t: T = N.as_();
+    let twopi: T = (2).as_() * T::PI();
+    let zero: T = T::zero();
     
     let mut out = Array1::<Complex<T>>::zeros(N); // preallocate memory
 
     for k in 0..N {
         let mut sum: Complex<T> = Complex::<T>::new(zero, zero);
-        let k_t = T::from_usize(k).unwrap();
+        let k_t: T = k.as_();
         for n in 0..N {
-            let n_t = T::from_usize(n).unwrap();
+            let n_t: T = n.as_();
             let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n_t * k_t) / N_t);
             let arg: Complex<T> = Complex::<T>::new(x[n], zero) * phase.exp();
             
@@ -34,7 +36,7 @@ where
 
 pub fn fftfreq<T>(n: usize, p: T) -> Array1<T> 
 where 
-    T: Float + FromPrimitive + ndarray::ScalarOperand + std::ops::DivAssign,
+    T: float::Float + FromPrimitive + ndarray::ScalarOperand + std::ops::DivAssign,
 {
     let zero = T::from_f32(0.0).unwrap();
     let one = T::from_f32(1.0).unwrap();
@@ -61,7 +63,7 @@ where
 
 pub fn dtft<'a, T>(x: &'a Array1<T>) -> impl Fn(&Array1<T>) -> Array1<Complex<T>> + 'a
 where 
-    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+    T: float::Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
 {
     |samples: &Array1<T>| -> Array1<Complex<T>> {
         let zero = T::from_f32(0.0).unwrap();
@@ -85,7 +87,7 @@ where
 
 pub fn fft_ct<T>(x: &Array1<T>) -> Array1<Complex<T>> 
 where 
-    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+    T: float::Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
 {
     let N = x.len();
     let N_t = T::from_usize(N).unwrap();
@@ -120,21 +122,21 @@ where
 
 pub fn fft_pf<T>(x: &Array1<T>) -> Array1<Complex<T>> 
 where 
-    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+    T: float::Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
 {
     std::unimplemented!();
 }
 
 pub fn ifft_ct<T>(x: &Array1<Complex<T>>) -> Array1<T> 
 where 
-    T: Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
+    T: float::Float + FromPrimitive + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign,
 {
     std::unimplemented!();
 }
 
 pub fn zero_pad<T>(x: &Array1<T>, ) -> Option<Array1<T>> 
 where 
-    T: Float + FromPrimitive
+    T: float::Float + FromPrimitive
 {
     let zero = T::from_f64(0.0).unwrap();
     let N = x.len();

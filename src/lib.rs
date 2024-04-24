@@ -8,6 +8,7 @@ pub mod inspect;
 pub mod convolvex;
 pub mod traits;
 pub mod io;
+pub mod signal;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
