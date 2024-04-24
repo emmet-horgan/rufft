@@ -1,4 +1,5 @@
 use std::convert::Into;
+use std::ops::{Add, Div, Mul, Sub};
 use std::usize;
 use num_traits::{AsPrimitive, Num, NumAssignOps};
 use num_traits::float::{Float, FloatConst};
@@ -18,13 +19,18 @@ mod marker {
     trait AsPrimitiveTo {}
 }
 
-pub trait SigVal: 
-    Into<f64> + AsPrimitive<f64> + AsPrimitive<f32> + Num + NumAssignOps + Float + FloatConst
-{
-}
+pub trait FloatVal: Num + NumAssignOps + Float + FloatConst + 'static {}
 
-impl SigVal for f64 {
-}
-impl SigVal for f32 {
-}
+pub trait SigVal<T: FloatVal>: Num + NumAssignOps + 'static 
+where 
+    Self: AsPrimitive<T>
+{}
 
+impl FloatVal for f64 {}
+impl FloatVal for f32 {}
+
+impl SigVal<f64> for f64 {}
+impl SigVal<f32> for f32 {}
+
+impl SigVal<f64> for i64 {}
+impl SigVal<f32> for i32 {}

@@ -1,13 +1,13 @@
 #![allow(non_snake_case)]
 use ndarray::{prelude::*};
 use num_complex::{Complex};
-use crate::traits::SigVal;
+use crate::traits::{FloatVal, SigVal};
 use num_traits::float;
 use num_traits::cast::{AsPrimitive, FromPrimitive};
 
-pub fn dft<T>(x: &Array1<T>) -> Array1<Complex<T>>
+pub fn dft<U, T: FloatVal>(x: &Array1<U>) -> Array1<Complex<T>>
 where
-    T: SigVal,
+    U: SigVal<T>,
     usize: AsPrimitive<T>
 {
 
@@ -24,7 +24,7 @@ where
         for n in 0..N {
             let n_t: T = n.as_();
             let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n_t * k_t) / N_t);
-            let arg: Complex<T> = Complex::<T>::new(x[n], zero) * phase.exp();
+            let arg: Complex<T> = Complex::<T>::new(x[n].as_(), zero) * phase.exp();
             
             sum += arg;
         }
@@ -169,7 +169,7 @@ macro_rules! fft {
                 fft::fft_ct(&$x)
             },
             Some(x) => {
-                fft::dft(&$x)
+                fft::dft::<f64 ,f64>(&$x)
             }
         }
     };
