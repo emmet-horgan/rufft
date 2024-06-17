@@ -10,7 +10,8 @@ use std::iter::{ExactSizeIterator, Iterator};
 
 struct DftIter<I, T>
 where
-    I: ExactSizeIterator,
+    I: IntoIterator,
+    I::IntoIter: ExactSizeIterator,
     I::Item: SigVal<T>,
     T: FloatVal
 {
@@ -22,16 +23,17 @@ where
 
 impl<I, T> DftIter<I, T> 
 where 
-    I: ExactSizeIterator,
+    I: IntoIterator,
+    I::IntoIter: ExactSizeIterator,
     I::Item: SigVal<T>,
     T: FloatVal
 {
     fn new(iter: I) -> Self {
-        let length = iter.len();
+        let length = (&iter.into_iter()).len();
         DftIter {
             iter,
             cur: 0,
-            length,
+            length: length,
             _marker: std::marker::PhantomData
         }
     }
@@ -39,7 +41,8 @@ where
 
 impl<I, T> Iterator for DftIter<I, T>
 where
-    I: ExactSizeIterator,
+    I: IntoIterator,
+    I::IntoIter: ExactSizeIterator,
     I::Item: SigVal<T>,
     T: FloatVal,
     usize: AsPrimitive<T>
@@ -58,7 +61,7 @@ where
         let zero = T::zero();
         let k = self.cur;
         let mut n: usize = 0;
-        for x in self.iter.by_ref() {
+        for x in self.iter.into_iter() {
             let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n.as_() * k.as_()) / N_t);
             sum += Complex::<T>::new(x.as_(), zero) * phase.exp();
             n += 1
@@ -70,7 +73,8 @@ where
 
 impl<I, T> ExactSizeIterator for DftIter<I, T>
 where
-    I: ExactSizeIterator,
+    I: IntoIterator,
+    I::IntoIter: ExactSizeIterator,
     I::Item: SigVal<T>,
     T: FloatVal,
     usize: AsPrimitive<T>
@@ -80,9 +84,9 @@ where
     }
 }
 
-pub fn dft_func<T: FloatVal, I: ExactSizeIterator>(x: I) -> DftIter<I, T>
+pub fn dft_func<T: FloatVal, I: IntoIterator>(x: I) -> DftIter<I, T>
 where
-    I: ExactSizeIterator,
+    I::IntoIter: ExactSizeIterator,
     I::Item: SigVal<T>,
     usize: AsPrimitive<T>
 {
@@ -386,8 +390,8 @@ mod tests {
         match json_data.input_data {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
-                output = Array1::zeros()
-                let result = fft::dft_func(input.into_iter());
+                //output = Array1::zeros();
+                let result = fft::dft_func(input.to_vec());
                 for x in result {
                     println!("{}", x);
                 }
