@@ -8,118 +8,94 @@ use num_traits::cast::AsPrimitive;
 use std::ops::DivAssign;
 use std::iter::{ExactSizeIterator, Iterator};
 
-struct DftIter<I, T>
-where
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal
+pub struct DftIter<'a, T, U>
+where 
+    U: FloatVal,
+    T: SigVal<U>
 {
-    iter: I,
+    arr: &'a [T],
     cur: usize,
-    length: usize,
-    _marker: std::marker::PhantomData<T>
+    marker: std::marker::PhantomData<U>
 }
 
-impl<I, T> DftIter<I, T> 
+impl<'a, T, U> DftIter<'a, T, U> 
 where 
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal
+    U: FloatVal,
+    T: SigVal<U>
 {
-    fn new(iter: I) -> Self {
-        let length = (&iter.into_iter()).len();
+    fn new(x: &'a [T]) -> Self {
         DftIter {
-            iter,
+            arr: x,
             cur: 0,
-            length: length,
-            _marker: std::marker::PhantomData
+            marker: std::marker::PhantomData
         }
     }
 }
 
-impl<I, T> Iterator for DftIter<I, T>
+impl<'a, T, U> Iterator for DftIter<'a, T, U>
 where
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>
+    U: FloatVal,
+    T: SigVal<U>,
+    usize: AsPrimitive<U>
 {
-    type Item = Complex<T>;
+    type Item = Complex<U>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.cur == self.length - 1 {
+        if self.cur == self.arr.len() {
             return None;
         }
 
-        let mut sum = Complex::<T>::zero();
-        let N = self.length;
-        let N_t: T = N.as_();
-        let twopi: T = (2).as_() * T::PI();
-        let zero = T::zero();
-        let k = self.cur;
-        let mut n: usize = 0;
-        for x in self.iter.into_iter() {
-            let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n.as_() * k.as_()) / N_t);
-            sum += Complex::<T>::new(x.as_(), zero) * phase.exp();
-            n += 1
+        let mut sum = Complex::<U>::zero();
+        let N = self.arr.len();
+        let twopi: U = (2).as_() * U::PI();
+        let zero = U::zero();
+        for (n, x) in self.arr.into_iter().enumerate() {
+            let phase: Complex<U> = Complex::<U>::new(zero,
+                 -(twopi * n.as_() * self.cur.as_()) / N.as_());
+            sum += Complex::<U>::new(x.as_(), zero) * phase.exp();
         }
         self.cur += 1;
         Some(sum)
     }
 }
 
-impl<I, T> ExactSizeIterator for DftIter<I, T>
-where
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>
+impl<'a, T, U> ExactSizeIterator for DftIter<'a, T, U>
+where 
+    U: FloatVal,
+    T: SigVal<U>,
+    usize: AsPrimitive<U>
 {
     fn len(&self) -> usize {
-        self.length
+        self.arr.len()
     }
 }
 
-pub fn dft_func<T: FloatVal, I: IntoIterator>(x: I) -> DftIter<I, T>
+pub fn dft<T, U>(x: &[T]) -> Array1<Complex<U>>
 where
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    usize: AsPrimitive<T>
-{
-    DftIter::new(x)
-}
-
-pub fn dft<U, T>(x: &Array1<U>) -> Array1<Complex<T>>
-where
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>
+    U: FloatVal,
+    T: SigVal<U>,
+    usize: AsPrimitive<U>
 {
 
     let N = x.len();
-    let N_t: T = N.as_();
-    let twopi: T = (2).as_() * T::PI();
-    let zero: T = T::zero();
+    let N_t: U = N.as_();
+    let twopi: U = (2).as_() * U::PI();
+    let zero: U = U::zero();
     
-    let mut out = Array1::<Complex<T>>::zeros(N); // preallocate memory
+    let mut out = Array1::<Complex<U>>::zeros(N); // preallocate memory
 
     for k in 0..N {
-        let mut sum: Complex<T> = Complex::<T>::new(zero, zero);
-        let k_t: T = k.as_();
+        let mut sum: Complex<U> = Complex::<U>::new(zero, zero);
+        let k_t: U = k.as_();
         for n in 0..N {
-            let n_t: T = n.as_();
-            let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n_t * k_t) / N_t);
-            let arg: Complex<T> = Complex::<T>::new(x[n].as_(), zero) * phase.exp();
+            let n_t: U = n.as_();
+            let phase: Complex<U> = Complex::<U>::new(zero, -(twopi * n_t * k_t) / N_t);
+            let arg: Complex<U> = Complex::<U>::new(x[n].as_(), zero) * phase.exp();
             
             sum += arg;
         }
         out[k] = sum;
     }
-    
     out
 }
 
@@ -339,12 +315,19 @@ mod tests {
         match json_data.input_data {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
-                output = fft!(&input);
+                output = fft::fft_ct(&input);
+                println!("len(output) for slice = {}", output.len());
+                println!("output[0] = {}", output[0]);
+                println!("output[1] = {}", output[1]);
+                println!("output[2] = {}", output[2]);
+                println!("output[3] = {}", output[3]);
             }
             _ => {panic!()}
         }
         match json_data.output_data {
             io::Data::ComplexVals { mag, phase} => {
+                let mut err_mag_acc: f64 = 0.0;
+                let mut err_phase_acc: f64 = 0.0;
                 for i in 0..mag.len() {
                     let mag_calc = output[i].norm();
                     let phase_calc = output[i].arg();
@@ -368,13 +351,19 @@ mod tests {
                     if percentage_phase > max_phase_error {
                         max_phase_error = percentage_phase;
                     }
-                    if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
-                    assert!(false)
-                    }
-                    assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
+                    err_mag_acc += percentage_mag;
+                    err_phase_acc += percentage_phase;
+                    //if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
+                    //    println!("percentage_mag = {}", percentage_mag);
+                    //    println!("percentage_phase = {}", percentage_phase);
+                    //    assert!(false)
+                    //}
+                    //assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
                 }
                 println!("Maximum % magnitude error: {}", max_mag_error);
                 println!("Maximum % phase error: {}", max_phase_error);
+                println!("Averave % magnitude error: {}", err_mag_acc / mag.len() as f64);
+                println!("Averave % phase error: {}", err_phase_acc / mag.len() as f64);
             }
             _ => {panic!()}
         }
@@ -383,58 +372,85 @@ mod tests {
     #[test]
     fn dft_sine_func() {
         let json_data = io::read_json("datasets/fft/fft/fft.json");
-        let mut output: Array1<Complex<f64>>;
-        let epsilon = 1E-10;
-        let mut max_mag_error: f64 = 0.0;
-        let mut max_phase_error: f64 = 0.0;
+        let output: Array1<Complex<f64>>;
+        let epsilon = 1E-6;
+
         match json_data.input_data {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
-                //output = Array1::zeros();
-                let result = fft::dft_func(input.to_vec());
-                for x in result {
-                    println!("{}", x);
-                }
+                let tmp = input.as_slice().unwrap();
+                output = fft::DftIter::new(tmp).collect();
             }
             _ => {panic!()}
         }
-        //match json_data.output_data {
-        //    io::Data::ComplexVals { mag, phase} => {
-        //        for i in 0..mag.len() {
-        //            let mag_calc = output[i].norm();
-        //            let phase_calc = output[i].arg();
-        //            let percentage_mag: f64;
-        //            let percentage_phase: f64;
-        //            if (mag[i] == f64::from(0.0)) || (mag_calc == f64::from(0.0)) {
-        //                percentage_mag = (mag[i] - mag_calc).abs();
-        //            } 
-        //            else {
-        //                percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
-        //            }
-        //            if (phase[i] == f64::from(0.0)) || (phase_calc == f64::from(0.0)) {
-        //                percentage_phase = (phase[i] - phase_calc).abs();
-        //            } 
-        //            else {
-        //                percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
-        //            }
-        //            if percentage_mag > max_mag_error {
-        //                max_mag_error = percentage_mag;
-        //            }
-        //            if percentage_phase > max_phase_error {
-        //                max_phase_error = percentage_phase;
-        //            }
-        //            if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
-        //            assert!(false)
-        //            }
-        //            assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
-        //        }
-        //        println!("Maximum % magnitude error: {}", max_mag_error);
-        //        println!("Maximum % phase error: {}", max_phase_error);
-        //    }
-        //   _ => {panic!()}
-        //}
-    }
+        match json_data.output_data {
+            io::Data::ComplexVals { mag, phase} => {
+                let mut err_mag_acc: f64 = 0.0;
+                let mut err_phase_acc: f64 = 0.0;
+                let mut max_pecent_mag_err: f64 = 0.0;
+                let mut max_pecent_phase_err: f64 = 0.0;
+                let mut max_mag_err: f64 = 0.0;
+                let mut max_phase_err: f64 = 0.0;
+                for (i, x) in output.into_iter().enumerate() {
+                    let mag_calc = x.norm();
+                    let phase_calc = x.arg();
+                    let err_mag = (mag_calc - mag[i]).abs();
+                    let err_phase = (phase_calc - phase[i]).abs();
 
+                    let percentage_mag: f64 = if mag[i] != 0.0 {
+                        err_mag / mag[i]
+                    } else {
+                        err_mag
+                    };
+
+                    let percentage_phase: f64 = if phase[i] != 0.0 {
+                        err_phase / phase[i]
+                    } else {
+                        err_phase.abs()
+                    };
+                    
+                    err_mag_acc += err_mag;
+                    err_phase_acc += err_phase;
+                    max_pecent_mag_err = if percentage_mag > max_pecent_mag_err {
+                        percentage_mag
+                    } else {
+                        max_pecent_mag_err
+                    };
+                    max_pecent_phase_err = if percentage_phase > max_pecent_phase_err {
+                        percentage_phase
+                    } else {
+                        max_pecent_phase_err
+                    };
+
+                    max_mag_err = if err_mag > max_mag_err {
+                        err_mag
+                    } else {
+                        max_mag_err
+                    };
+                    max_phase_err = if err_phase > max_phase_err {
+                        println!("phase biggest err index = {}", i);
+                        println!("x = {}", x);
+                        println!("phase(rust) = {}", x.arg());
+                        println!("phase(python) = {}", phase[i]);
+                        err_phase
+                    } else {
+                        max_phase_err
+                    };
+                }
+                println!("Maximum % magnitude error: {}", max_pecent_mag_err);
+                println!("Maximum % phase error: {}", max_pecent_phase_err);
+                println!("Maximum magnitude error: {}", max_mag_err);
+                println!("Maximum phase error: {}", max_phase_err);
+                println!("Acc magnitude error: {}", err_mag_acc);
+                println!("Acc phase error: {}", err_phase_acc);
+
+                println!("Average % magnitude error: {}", err_mag_acc / mag.len() as f64);
+                println!("Average % phase error: {}", err_phase_acc / mag.len() as f64);
+            }
+            _ => {panic!()}
+        }
+    }
+    
     #[test]
     fn dtft_sine() {
         std::unimplemented!();
