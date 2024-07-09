@@ -6,7 +6,7 @@ use crate::traits::{FloatVal, SigVal};
 use num_traits::Num;
 use num_traits::cast::AsPrimitive;
 use std::ops::DivAssign;
-use std::iter::{ExactSizeIterator, Iterator};
+use std::iter::{ExactSizeIterator, Iterator, FromIterator};
 
 pub struct DftIter<'a, T, U>
 where 
@@ -23,7 +23,7 @@ where
     U: FloatVal,
     T: SigVal<U>
 {
-    fn new(x: &'a [T]) -> Self {
+    pub fn new(x: &'a [T]) -> Self {
         DftIter {
             arr: x,
             cur: 0,
@@ -70,33 +70,23 @@ where
     }
 }
 
-pub fn dft<T, U>(x: &[T]) -> Array1<Complex<U>>
+pub fn dft<T, U, C>(x: &[T]) -> C
 where
     U: FloatVal,
     T: SigVal<U>,
-    usize: AsPrimitive<U>
+    usize: AsPrimitive<U>,
+    C: FromIterator<Complex<U>>
 {
 
     let N = x.len();
-    let N_t: U = N.as_();
     let twopi: U = (2).as_() * U::PI();
     let zero: U = U::zero();
-    
-    let mut out = Array1::<Complex<U>>::zeros(N); // preallocate memory
-
-    for k in 0..N {
-        let mut sum: Complex<U> = Complex::<U>::new(zero, zero);
-        let k_t: U = k.as_();
-        for n in 0..N {
-            let n_t: U = n.as_();
-            let phase: Complex<U> = Complex::<U>::new(zero, -(twopi * n_t * k_t) / N_t);
-            let arg: Complex<U> = Complex::<U>::new(x[n].as_(), zero) * phase.exp();
-            
-            sum += arg;
-        }
-        out[k] = sum;
-    }
-    out
+    x.into_iter().enumerate().map(|(k, _)|{
+        x.into_iter().enumerate().map(|(n, j)| {
+            let phase = Complex::<U>::new(zero, -(twopi * n.as_() * k.as_()) / N.as_());
+            Complex::<U>::new(j.as_(), zero) * phase.exp()
+        }).sum()
+    }).collect()
 }
 
 pub fn fftfreq<U, T>(n: usize, p: U) -> Array1<T> 
@@ -155,42 +145,43 @@ where
     }
 }
 
-pub fn fft_ct<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
+pub fn fft_ct<T, U, C>(x: &[T]) -> C 
 where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
+    T: SigVal<U>,
+    U: FloatVal,
+    usize: AsPrimitive<U>,
+    C: FromIterator<Complex<U>> + Iterator
 {
     let N = x.len();
-    let N_t: T = N.as_();
-    let zero = T::zero();
-    let one = T::one();
-    let twopi: T = (2).as_() * T::PI();
+    let zero = U::zero();
+    let one = U::one();
+    let twopi: U = (2).as_() * U::PI();
 
     if N == 1 {
-        array![Complex::<T>::new(x[0].as_(), zero)]
-    }
-    else {
-        let wn = Complex::<T>::new(zero, -twopi / N_t);
+        x.into_iter().map(|x| Complex::<U>::new(x.clone().as_(), zero)).collect()
+    } else {
+        let wn = Complex::<U>::new(zero, -twopi / N.as_());
         let wn = wn.exp();
-        let mut w = Complex::<T>::new(one, zero);
+        let mut w = Complex::<U>::new(one, zero);
 
-        let x_even: Array1<U> = x.slice(s![0..;2]).to_owned();
-        let x_odd: Array1<U> = x.slice(s![1..;2]).to_owned();
+        let x_even: Array1<T> = x.into_iter().step_by(2).map(|k| *k).collect();
+        let x_odd: Array1<T> = x.into_iter().skip(1).step_by(2).map(|k| *k).collect();
         
-        let y_even = fft_ct(&x_even);
-        let y_odd = fft_ct(&x_odd);
-
-        let mut y = Array1::<Complex<T>>::zeros(N); // preallocate memory
+        let y_even: C = fft_ct(x_even.as_slice().unwrap());
+        let y_odd: C = fft_ct(x_odd.as_slice().unwrap());
+        let mut y = Array1::<Complex<U>>::zeros(N);
+        
+        let mut y = Array1::<Complex<U>>::zeros(N); // preallocate memory
         for j in 0..(N/2) {
             let tmp = w * y_odd[j];
             y[j] = y_even[j] + tmp;
             y[j + N/2] = y_even[j] - tmp; 
             w *= wn;
         }
-        y
+        y.iter().map(|k| *k).collect()
     }
 }
+
 
 pub fn fft_pf<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
 where 
@@ -215,11 +206,6 @@ pub fn ifft_ct<T: FloatVal>(x: &Array1<Complex<T>>) -> Array1<T>
     std::unimplemented!();
 }
 
-//pub fn pad<T: Num + Copy>(x: &Array1<T>, val: T, len: usize) -> Result<Array1<T>, ndarray::ShapeError> {
-//    //let _: Array1<T> = x.iter().map(|x| x).into()
-//    //let tmp = x.clone();
-//    x.clone().into_shape((1, len))
-//}
 
 pub fn zero_pad<T: Num + Copy>(x: &Array1<T>) -> Option<Array1<T>> 
 {
@@ -315,7 +301,7 @@ mod tests {
         match json_data.input_data {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
-                output = fft::fft_ct(&input);
+                output = fft::fft_ct_gen(input.as_slice().unwrap());
                 println!("len(output) for slice = {}", output.len());
                 println!("output[0] = {}", output[0]);
                 println!("output[1] = {}", output[1]);

@@ -1,21 +1,7 @@
 use num_traits::{AsPrimitive, Num, NumAssignOps};
 use num_traits::float::{Float, FloatConst};
-use num::Complex;
-use std::iter::Iterator;
-use std::iter::ExactSizeIterator;
 
-pub trait Stats {
-    type Elements;
-
-    fn mean(&self) -> Self::Elements;
-    fn variance(&self) -> Self::Elements;
-    fn stdev(&self) -> Self::Elements;
-    fn skewness(&self) -> Self::Elements;
-    fn kurtosis(&self) -> Self::Elements;
-    fn histogram(&self);
-} 
-
-pub trait FloatVal: Num + NumAssignOps + Float + FloatConst + 'static {}
+pub trait FloatVal: NumAssignOps + Float + FloatConst + 'static {}
 
 pub trait SigVal<T: FloatVal>: Num + NumAssignOps + 'static 
 where 
