@@ -24,34 +24,6 @@ pub fn zero_crossing() {
     std::unimplemented!();
 }
 
-impl<T> crate::traits::Stats for Array1<T> {
-    type Elements = T;
-    fn mean(&self) -> T {
-        std::unimplemented!();
-    }
-
-    fn variance(&self) -> T {
-        std::unimplemented!();
-    }
-    
-    fn stdev(&self) -> T {
-        std::unimplemented!();
-    }
-
-    fn skewness(&self) -> T {
-        std::unimplemented!();
-    }
-    
-    fn kurtosis(&self) -> T {
-        std::unimplemented!();
-    }
-
-    fn histogram(&self) {
-        std::unimplemented!();
-    }
-    
-}
-
 
 #[cfg(test)]
 mod tests {

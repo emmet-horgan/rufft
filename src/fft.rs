@@ -150,7 +150,7 @@ where
     T: SigVal<U>,
     U: FloatVal,
     usize: AsPrimitive<U>,
-    C: FromIterator<Complex<U>> + Iterator
+    C: FromIterator<Complex<U>>
 {
     let N = x.len();
     let zero = U::zero();
@@ -167,9 +167,10 @@ where
         let x_even: Array1<T> = x.into_iter().step_by(2).map(|k| *k).collect();
         let x_odd: Array1<T> = x.into_iter().skip(1).step_by(2).map(|k| *k).collect();
         
-        let y_even: C = fft_ct(x_even.as_slice().unwrap());
-        let y_odd: C = fft_ct(x_odd.as_slice().unwrap());
-        let mut y = Array1::<Complex<U>>::zeros(N);
+        // This line is very important and could cause trouble in terms of the generic functions 
+        // created. Perhaps better to use an output type of C and make C indexable ?
+        let y_even: Array1<_> = fft_ct(x_even.as_slice().unwrap());
+        let y_odd: Array1<_> = fft_ct(x_odd.as_slice().unwrap());
         
         let mut y = Array1::<Complex<U>>::zeros(N); // preallocate memory
         for j in 0..(N/2) {
@@ -301,7 +302,7 @@ mod tests {
         match json_data.input_data {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
-                output = fft::fft_ct_gen(input.as_slice().unwrap());
+                output = fft::fft_ct(input.as_slice().unwrap());
                 println!("len(output) for slice = {}", output.len());
                 println!("output[0] = {}", output[0]);
                 println!("output[1] = {}", output[1]);
