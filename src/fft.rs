@@ -89,6 +89,25 @@ where
     }).collect()
 }
 
+pub fn idft<T, U, C>(x: &[T]) -> C
+where
+    U: FloatVal,
+    T: SigVal<U>,
+    usize: AsPrimitive<U>,
+    C: FromIterator<Complex<U>>
+{
+
+    let N = x.len();
+    let twopi: U = (2).as_() * U::PI();
+    let zero: U = U::zero();
+    x.into_iter().enumerate().map(|(k, _)|{
+        x.into_iter().enumerate().map(|(n, j)| {
+            let phase = Complex::<U>::new(zero, (twopi * n.as_() * k.as_()) / N.as_());
+            Complex::<U>::new(j.as_(), zero) * phase.exp()
+        }).sum::<Complex<U>>() * Complex::<U>::new(U::one() / N.as_(), zero)
+    }).collect()
+}
+
 pub fn fftfreq<U, T>(n: usize, p: U) -> Array1<T> 
 where 
     U: SigVal<T>,
@@ -182,7 +201,6 @@ where
         y.iter().map(|k| *k).collect()
     }
 }
-
 
 pub fn fft_pf<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
 where 
