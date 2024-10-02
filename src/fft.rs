@@ -3,8 +3,8 @@ use ndarray::prelude::*;
 use num::{zero, One, Zero};
 use num_complex::{Complex, ComplexFloat};
 use crate::traits::{FloatVal, SigVal};
-use num_traits::{Float, FloatConst, Num, NumAssign};
-use num_traits::cast::AsPrimitive;
+use num_traits::{Float, FloatConst, Num, NumAssign, AsPrimitive};
+//use num_traits::cast::AsPrimitive;
 use std::ops::{Deref, DivAssign, Index, IndexMut, Mul};
 use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator};
 
@@ -177,16 +177,17 @@ impl<T> TyEq for T {
 }
 
 pub trait HasInnerFloat {
-    type InnerFloat: Float + FloatConst + NumAssign;
+    type InnerFloat: Float + FloatConst + NumAssign + 'static;
 }   
 
-impl<T: Float + FloatConst + NumAssign> HasInnerFloat for Complex<T> {
+impl<T: 'static + Float + FloatConst + NumAssign> HasInnerFloat for Complex<T> {
     type InnerFloat = T;
 }
 
 pub trait Fft: IntoIterator + Deref<Target = [<Self as IntoIterator>::Item]> + Sized + Clone + FromIterator<<Self as IntoIterator>::Item> + IndexMut<usize, Output = <Self as IntoIterator>::Item>
 where 
-    <Self as IntoIterator>::Item: ComplexFloat + HasInnerFloat + Deref<Target = <Self as IntoIterator>::Item>,
+    <Self as IntoIterator>::Item: ComplexFloat + HasInnerFloat,// + Deref<Target = <Self as IntoIterator>::Item>,
+    usize: AsPrimitive<<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>,
     //<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat: From<usize>,
     <Self as IntoIterator>::Item: TyEq<Type = Complex<<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>>,
     //<Self as Iterator>::Item = Complex<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>,
@@ -196,7 +197,7 @@ where
 
     fn fft(&self) -> Self {
         let N: usize = self.len();
-        let N_calc = N as <<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat;
+        let N_calc: <<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat = N.as_();
         
         //let zero = <Self as Iterator>::Item::zero();
         //let one = <Self as Iterator>::Item::one();
@@ -217,8 +218,8 @@ where
             //let wn = wn.exp();
             //let mut w = Complex::<U>::new(one, zero);
             
-            let x_even: Self = self.clone().into_iter().step_by(2).map(|k| *k).collect();
-            let x_odd: Self =  self.clone().into_iter().skip(1).step_by(2).map(|k| *k).collect();
+            let x_even: Self = self.clone().into_iter().step_by(2).map(|k| k).collect();
+            let x_odd: Self =  self.clone().into_iter().skip(1).step_by(2).map(|k| k).collect();
             //let x_even: Array1<T> = x.into_iter().step_by(2).map(|k| *k).collect();
             //let x_odd: Array1<T> = x.into_iter().skip(1).step_by(2).map(|k| *k).collect();
             
@@ -401,6 +402,7 @@ mod tests {
     use crate::io;
     use ndarray::prelude::*;
     use num_complex::Complex;
+    use super::*;
 
     #[test]
     fn dft_sine() {
@@ -413,6 +415,72 @@ mod tests {
             io::Data::<f64>::Array(input) => {
                 let input: Array1<f64> = Array1::from_vec(input);
                 output = fft::fft_ct(input.as_slice().unwrap());
+                println!("len(output) for slice = {}", output.len());
+                println!("output[0] = {}", output[0]);
+                println!("output[1] = {}", output[1]);
+                println!("output[2] = {}", output[2]);
+                println!("output[3] = {}", output[3]);
+            }
+            _ => {panic!()}
+        }
+        match json_data.output_data {
+            io::Data::ComplexVals { mag, phase} => {
+                let mut err_mag_acc: f64 = 0.0;
+                let mut err_phase_acc: f64 = 0.0;
+                for i in 0..mag.len() {
+                    let mag_calc = output[i].norm();
+                    let phase_calc = output[i].arg();
+                    let percentage_mag: f64;
+                    let percentage_phase: f64;
+                    if (mag[i] == f64::from(0.0)) || (mag_calc == f64::from(0.0)) {
+                        percentage_mag = (mag[i] - mag_calc).abs();
+                    } 
+                    else {
+                        percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
+                    }
+                    if (phase[i] == f64::from(0.0)) || (phase_calc == f64::from(0.0)) {
+                        percentage_phase = (phase[i] - phase_calc).abs();
+                    } 
+                    else {
+                        percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
+                    }
+                    if percentage_mag > max_mag_error {
+                        max_mag_error = percentage_mag;
+                    }
+                    if percentage_phase > max_phase_error {
+                        max_phase_error = percentage_phase;
+                    }
+                    err_mag_acc += percentage_mag;
+                    err_phase_acc += percentage_phase;
+                    //if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
+                    //    println!("percentage_mag = {}", percentage_mag);
+                    //    println!("percentage_phase = {}", percentage_phase);
+                    //    assert!(false)
+                    //}
+                    //assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
+                }
+                println!("Maximum % magnitude error: {}", max_mag_error);
+                println!("Maximum % phase error: {}", max_phase_error);
+                println!("Averave % magnitude error: {}", err_mag_acc / mag.len() as f64);
+                println!("Averave % phase error: {}", err_phase_acc / mag.len() as f64);
+            }
+            _ => {panic!()}
+        }
+    }
+
+    #[test]
+    fn fft_trait() {
+        let json_data = io::read_json("datasets/fft/fft/fft.json");
+        let output: Vec<Complex<f64>>;
+        let epsilon = 1E-10;
+        let mut max_mag_error: f64 = 0.0;
+        let mut max_phase_error: f64 = 0.0;
+        match json_data.input_data {
+            io::Data::<f64>::Array(input) => {
+                //let input: Array1<f64> = Array1::from_vec(input);
+                let input: Vec<Complex<f64>> = input.into_iter().map(|x| Complex::<f64>::new(x, 0.0)).collect();
+                output = input.fft();
+                //output = fft::fft_ct(input.as_slice().unwrap());
                 println!("len(output) for slice = {}", output.len());
                 println!("output[0] = {}", output[0]);
                 println!("output[1] = {}", output[1]);
