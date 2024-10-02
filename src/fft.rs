@@ -1,11 +1,11 @@
 #![allow(non_snake_case)]
 use ndarray::prelude::*;
-use num::Zero;
-use num_complex::Complex;
+use num::{zero, One, Zero};
+use num_complex::{Complex, ComplexFloat};
 use crate::traits::{FloatVal, SigVal};
-use num_traits::Num;
+use num_traits::{Num, FloatConst, Float};
 use num_traits::cast::AsPrimitive;
-use std::ops::DivAssign;
+use std::ops::{Deref, DivAssign, Index, Mul};
 use std::iter::{ExactSizeIterator, Iterator, FromIterator};
 
 pub struct DftIter<'a, T, U>
@@ -162,6 +162,79 @@ where
         }
         y
     }
+}
+
+trait HasInnerFloat {
+    type InnerFloat: Float + FloatConst;
+}   
+
+impl<T: Float + FloatConst> HasInnerFloat for Complex<T> {
+    type InnerFloat = T;
+}
+
+pub trait Fft: ExactSizeIterator + Sized + Clone + FromIterator<<Self as Iterator>::Item> + Index<usize, Output = <Self as Iterator>::Item>
+where 
+    <Self as Iterator>::Item: ComplexFloat + HasInnerFloat + Deref<Target = <Self as Iterator>::Item>,
+    <<Self as Iterator>::Item as HasInnerFloat>::InnerFloat: From<usize>,
+    Complex<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>: Mul<<Self as Iterator>::Item>
+{
+    //type Type;
+
+    fn fft(&self) -> Self {
+        let N: usize = self.len();
+        
+        //let zero = <Self as Iterator>::Item::zero();
+        //let one = <Self as Iterator>::Item::one();
+        let zero = <<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::zero();
+        let one = <<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::one();
+        let twopi = <<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat as FloatConst>::TAU();
+
+        if N == 1 {
+            self.clone()
+            //self.into_iter().map(|x| Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(x, zero)).collect()
+        } else {
+            let wn = Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(zero, -twopi / N.into());
+            let wn = wn.exp();
+            let mut w = Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(one, zero);
+            //let wn = Complex::<U>::new(zero, -twopi / N.as_());
+            //let wn = wn.exp();
+            //let mut w = Complex::<U>::new(one, zero);
+            
+            let x_even: Self = self.clone().into_iter().step_by(2).map(|k| *k).collect();
+            let x_odd: Self =  self.clone().into_iter().skip(1).step_by(2).map(|k| *k).collect();
+            //let x_even: Array1<T> = x.into_iter().step_by(2).map(|k| *k).collect();
+            //let x_odd: Array1<T> = x.into_iter().skip(1).step_by(2).map(|k| *k).collect();
+            
+            // This line is very important and could cause trouble in terms of the generic functions 
+            // created. Perhaps better to use an output type of C and make C indexable ?
+            let y_even = x_even.fft();
+            let y_odd = x_odd.fft();
+            //let y_even: Array1<_> = fft_ct(x_even.as_slice().unwrap());
+            //let y_odd: Array1<_> = fft_ct(x_odd.as_slice().unwrap());
+            
+            let mut y = self.clone(); // preallocate memory
+            for j in 0..(N/2) {
+                let tmp = w * y_odd[j];
+                y[j] = y_even[j] + tmp;
+                y[j + N/2] = y_even[j] - tmp; 
+                w *= wn;
+            }
+            y
+
+            //let mut y = Array1::<Complex<U>>::zeros(N); // preallocate memory
+            //for j in 0..(N/2) {
+            //    let tmp = w * y_odd[j];
+            //    y[j] = y_even[j] + tmp;
+            //    y[j + N/2] = y_even[j] - tmp; 
+            //    w *= wn;
+            //}
+            //y.iter().map(|k| *k).collect();
+            //self.clone()
+        }
+
+        
+    }
+    fn ifft(&self) -> Self;
 }
 
 pub fn fft_ct<T, U, C>(x: &[T]) -> C 
