@@ -3,10 +3,10 @@ use ndarray::prelude::*;
 use num::{zero, One, Zero};
 use num_complex::{Complex, ComplexFloat};
 use crate::traits::{FloatVal, SigVal};
-use num_traits::{Num, FloatConst, Float};
+use num_traits::{Float, FloatConst, Num, NumAssign};
 use num_traits::cast::AsPrimitive;
-use std::ops::{Deref, DivAssign, Index, Mul};
-use std::iter::{ExactSizeIterator, Iterator, FromIterator};
+use std::ops::{Deref, DivAssign, Index, IndexMut, Mul};
+use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator};
 
 pub struct DftIter<'a, T, U>
 where 
@@ -164,38 +164,55 @@ where
     }
 }
 
-trait HasInnerFloat {
-    type InnerFloat: Float + FloatConst;
+pub trait TyEq
+where
+    Self: From<Self::Type> + Into<Self::Type>,
+    Self::Type: From<Self> + Into<Self>,
+{
+    type Type;
+}
+
+impl<T> TyEq for T {
+    type Type = T;
+}
+
+pub trait HasInnerFloat {
+    type InnerFloat: Float + FloatConst + NumAssign;
 }   
 
-impl<T: Float + FloatConst> HasInnerFloat for Complex<T> {
+impl<T: Float + FloatConst + NumAssign> HasInnerFloat for Complex<T> {
     type InnerFloat = T;
 }
 
-pub trait Fft: ExactSizeIterator + Sized + Clone + FromIterator<<Self as Iterator>::Item> + Index<usize, Output = <Self as Iterator>::Item>
+pub trait Fft: IntoIterator + Deref<Target = [<Self as IntoIterator>::Item]> + Sized + Clone + FromIterator<<Self as IntoIterator>::Item> + IndexMut<usize, Output = <Self as IntoIterator>::Item>
 where 
-    <Self as Iterator>::Item: ComplexFloat + HasInnerFloat + Deref<Target = <Self as Iterator>::Item>,
-    <<Self as Iterator>::Item as HasInnerFloat>::InnerFloat: From<usize>,
-    Complex<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>: Mul<<Self as Iterator>::Item>
+    <Self as IntoIterator>::Item: ComplexFloat + HasInnerFloat + Deref<Target = <Self as IntoIterator>::Item>,
+    //<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat: From<usize>,
+    <Self as IntoIterator>::Item: TyEq<Type = Complex<<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>>,
+    //<Self as Iterator>::Item = Complex<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>,
+    //Complex<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>: Mul<<Self as Iterator>::Item>
 {
     //type Type;
 
     fn fft(&self) -> Self {
         let N: usize = self.len();
+        let N_calc = N as <<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat;
         
         //let zero = <Self as Iterator>::Item::zero();
         //let one = <Self as Iterator>::Item::one();
-        let zero = <<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::zero();
-        let one = <<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::one();
-        let twopi = <<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat as FloatConst>::TAU();
+        let zero = <<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>::zero();
+        let one = <<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>::one();
+        let twopi = <<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat as FloatConst>::TAU();
 
         if N == 1 {
             self.clone()
             //self.into_iter().map(|x| Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(x, zero)).collect()
         } else {
-            let wn = Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(zero, -twopi / N.into());
+            let wn = Complex::<<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>::new(zero, -twopi / N_calc );
+            //let wn: <Self as Iterator>::Item = wn.exp().into();
             let wn = wn.exp();
-            let mut w = Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(one, zero);
+            //let mut w: <Self as Iterator>::Item = Complex::<<<Self as Iterator>::Item as HasInnerFloat>::InnerFloat>::new(one, zero).into();
+            let mut w = Complex::<<<Self as IntoIterator>::Item as HasInnerFloat>::InnerFloat>::new(one, zero);
             //let wn = Complex::<U>::new(zero, -twopi / N.as_());
             //let wn = wn.exp();
             //let mut w = Complex::<U>::new(one, zero);
@@ -214,7 +231,7 @@ where
             
             let mut y = self.clone(); // preallocate memory
             for j in 0..(N/2) {
-                let tmp = w * y_odd[j];
+                let tmp = <Self as IntoIterator>::Item::from(w) * y_odd[j];
                 y[j] = y_even[j] + tmp;
                 y[j + N/2] = y_even[j] - tmp; 
                 w *= wn;
@@ -234,8 +251,10 @@ where
 
         
     }
-    fn ifft(&self) -> Self;
+    //fn ifft(&self) -> Self;
 }
+
+impl Fft for Vec<Complex<f64>> {}
 
 pub fn fft_ct<T, U, C>(x: &[T]) -> C 
 where 
