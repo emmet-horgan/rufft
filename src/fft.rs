@@ -249,10 +249,46 @@ where
             //y.iter().map(|k| *k).collect();
             //self.clone()
         }
-
-        
     }
     //fn ifft(&self) -> Self;
+}
+
+pub fn generic_fft<F, I, C>(x: &[F]) -> C
+where 
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>,
+    C: IntoIterator<Item = Complex<F>> + FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
+    I: IntoIterator<Item = F> + FromIterator<F> + Deref<Target = [F]>,
+{
+    let N = x.len();
+    let zero = F::zero();
+    let one = F::one();
+    let twopi = F::TAU();
+
+    if N == 1 {
+        return x.into_iter().map(|x| Complex::<F>::new(*x, zero)).collect();
+    } else {
+        let wn = Complex::<F>::new(zero, -twopi / N.as_());
+        let wn = wn.exp();
+        let mut w = Complex::<F>::new(one, zero);
+
+        let x_even: I = x.into_iter().step_by(2).map(|k| *k).collect();
+        let x_odd: I = x.into_iter().skip(1).step_by(2).map(|k| *k).collect();
+
+        // This line is very important and could cause trouble in terms of the generic functions 
+        // created. Perhaps better to use an output type of C and make C indexable ?
+        let y_even: C = generic_fft::<F, I, C>(&x_even);
+        let y_odd: C = generic_fft::<F, I, C>(&x_odd);
+
+        let mut y = C::from_iter(std::iter::repeat(Complex::<F>::new(zero, zero)).take(N)); // preallocate memory
+        for j in 0..(N/2) {
+            let tmp = w * y_odd[j];
+            y[j] = y_even[j] + tmp;
+            y[j + N/2] = y_even[j] - tmp; 
+            w *= wn;
+        }
+        y
+    }
 }
 
 impl Fft for Vec<Complex<f64>> {}
@@ -480,6 +516,72 @@ mod tests {
                 //let input: Array1<f64> = Array1::from_vec(input);
                 let input: Vec<Complex<f64>> = input.into_iter().map(|x| Complex::<f64>::new(x, 0.0)).collect();
                 output = input.fft();
+                //output = fft::fft_ct(input.as_slice().unwrap());
+                println!("len(output) for slice = {}", output.len());
+                println!("output[0] = {}", output[0]);
+                println!("output[1] = {}", output[1]);
+                println!("output[2] = {}", output[2]);
+                println!("output[3] = {}", output[3]);
+            }
+            _ => {panic!()}
+        }
+        match json_data.output_data {
+            io::Data::ComplexVals { mag, phase} => {
+                let mut err_mag_acc: f64 = 0.0;
+                let mut err_phase_acc: f64 = 0.0;
+                for i in 0..mag.len() {
+                    let mag_calc = output[i].norm();
+                    let phase_calc = output[i].arg();
+                    let percentage_mag: f64;
+                    let percentage_phase: f64;
+                    if (mag[i] == f64::from(0.0)) || (mag_calc == f64::from(0.0)) {
+                        percentage_mag = (mag[i] - mag_calc).abs();
+                    } 
+                    else {
+                        percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
+                    }
+                    if (phase[i] == f64::from(0.0)) || (phase_calc == f64::from(0.0)) {
+                        percentage_phase = (phase[i] - phase_calc).abs();
+                    } 
+                    else {
+                        percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
+                    }
+                    if percentage_mag > max_mag_error {
+                        max_mag_error = percentage_mag;
+                    }
+                    if percentage_phase > max_phase_error {
+                        max_phase_error = percentage_phase;
+                    }
+                    err_mag_acc += percentage_mag;
+                    err_phase_acc += percentage_phase;
+                    //if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
+                    //    println!("percentage_mag = {}", percentage_mag);
+                    //    println!("percentage_phase = {}", percentage_phase);
+                    //    assert!(false)
+                    //}
+                    //assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
+                }
+                println!("Maximum % magnitude error: {}", max_mag_error);
+                println!("Maximum % phase error: {}", max_phase_error);
+                println!("Averave % magnitude error: {}", err_mag_acc / mag.len() as f64);
+                println!("Averave % phase error: {}", err_phase_acc / mag.len() as f64);
+            }
+            _ => {panic!()}
+        }
+    }
+
+    #[test]
+    fn generic_fft_test() {
+        let json_data = io::read_json("datasets/fft/fft/fft.json");
+        let output: Vec<Complex<f64>>;
+        let epsilon = 1E-10;
+        let mut max_mag_error: f64 = 0.0;
+        let mut max_phase_error: f64 = 0.0;
+        match json_data.input_data {
+            io::Data::<f64>::Array(input) => {
+                //let input: Array1<f64> = Array1::from_vec(input);
+                //let input: Vec<Complex<f64>> = input.into_iter().map(|x| Complex::<f64>::new(x, 0.0)).collect();
+                output = generic_fft::<f64, Vec<f64>, Vec<Complex<f64>>>(&input);
                 //output = fft::fft_ct(input.as_slice().unwrap());
                 println!("len(output) for slice = {}", output.len());
                 println!("output[0] = {}", output[0]);
