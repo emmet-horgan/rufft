@@ -10,6 +10,9 @@ pub mod traits;
 pub mod io;
 pub mod signal;
 
+#[cfg(test)]
+mod test_utils;
+
 pub fn add(left: usize, right: usize) -> usize {
     left + right
 }
