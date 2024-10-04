@@ -2,12 +2,13 @@
 use ndarray::prelude::*;
 use num::{zero, One, Zero};
 use num_complex::{Complex, ComplexFloat};
-use crate::traits::{FloatVal, SigVal};
 use num_traits::{Float, FloatConst, Num, NumAssign, AsPrimitive, NumOps, NumAssignOps};
 //use num_traits::cast::AsPrimitive;
 use std::ops::{Deref, DivAssign, Index, IndexMut, Mul};
 use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator};
+use crate::traits::FloatCollection;
 
+/*
 pub struct DftIter<'a, T, U>
 where 
     U: FloatVal,
@@ -107,7 +108,8 @@ where
         }).sum::<Complex<U>>() * Complex::<U>::new(U::one() / N.as_(), zero)
     }).collect()
 }
-
+    */
+/*
 pub fn fftfreq<U, T>(n: usize, p: U) -> Array1<T> 
 where 
     U: SigVal<T>,
@@ -137,7 +139,8 @@ where
     arr /= p.as_() * n_t;
     return arr;
 }
-
+*/
+/*
 pub fn dtft<U, T>(x: Array1<U>) -> impl Fn(Array1<T>) -> Array1<Complex<T>>
 where 
     U: SigVal<T>,
@@ -163,112 +166,76 @@ where
         y
     }
 }
+    */
 
-pub trait TyEq
-where
-    Self: From<Self::Type> + Into<Self::Type>,
-    Self::Type: From<Self> + Into<Self>,
-{
-    type Type;
-}
-
-impl<T> TyEq for T {
-    type Type = T;
-}
-
-pub trait HasInnerFloat {
-    type InnerFloat: Float + FloatConst + NumAssign + 'static;
-}   
-
-impl<T: 'static + Float + FloatConst + NumAssign> HasInnerFloat for Complex<T> {
-    type InnerFloat = T;
-}
-
-pub trait Fft
+pub trait Fft<F: Float + FloatConst + NumAssign + 'static>
 where 
-    Self: IntoIterator + FromIterator<<Self as IntoIterator>::Item> + IndexMut<usize, Output = <Self as IntoIterator>::Item>,
-    Self: Deref<Target = [<Self as IntoIterator>::Item]> + Clone,
-    <Self as IntoIterator>::Item: Float + FloatConst + NumAssign + 'static,
-    usize: AsPrimitive<<Self as IntoIterator>::Item>
-{
+    Self: IntoIterator<Item = F> + FromIterator<F> + Clone,
+    <Self as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'a> &'a Self: IntoIterator<Item = &'a F>,
+    for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
+    usize: AsPrimitive<F>,
+{   
+    //type Type: Float + FloatConst + NumAssign + 'static;
     fn fft_ct<C>(&self) -> C
     where
-        C: IntoIterator<Item = Complex<<Self as IntoIterator>::Item>> + FromIterator<Complex<<Self as IntoIterator>::Item>> + IndexMut<usize, Output = Complex<<Self as IntoIterator>::Item>>
+        C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>
     {
-        fft_ct::<Self, C, <Self as IntoIterator>::Item>(&self)
+        fft_ct::<Self, C, F>(self)
     }
 }
 
 pub fn fft_ct<I, C, F>(x: &I) -> C
-where 
+where
     F: Float + FloatConst + NumAssign + 'static,
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
     usize: AsPrimitive<F>,
     C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
-    I: FromIterator<F> + Deref<Target = [F]>,
 {
-    let N = x.len();
+    let N = x.into_iter().len();
     let zero = F::zero();
     let one = F::one();
     let twopi = F::TAU();
 
     if N == 1 {
-        x.iter().map(|x| Complex::<F>::new(*x, zero)).collect()
+        x.into_iter()
+            .map(|&x| Complex::new(x, zero))
+            .collect()
     } else {
-        let wn = Complex::<F>::new(zero, -twopi / N.as_());
+        let wn = Complex::new(zero, -twopi / (N.as_()));
         let wn = wn.exp();
-        let mut w = Complex::<F>::new(one, zero);
+        let mut w = Complex::new(one, zero);
 
-        let x_even: I = x.iter().step_by(2).map(|k| *k).collect();
-        let x_odd: I = x.iter().skip(1).step_by(2).map(|k| *k).collect();
+        let x_even: I = x.into_iter().step_by(2).cloned().collect();
+        let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
 
-        // This line is very important and could cause trouble in terms of the generic functions 
-        let y_even: C = fft_ct::<I, C, F>(&x_even);
-        let y_odd: C = fft_ct::<I, C, F>(&x_odd);
+        let y_even: C = fft_ct(&x_even);
+        let y_odd: C = fft_ct(&x_odd);
 
-        let mut y = C::from_iter(std::iter::repeat(Complex::<F>::new(zero, zero)).take(N)); // preallocate memory
-        // Need to get rid of the indexs here as they can panic!
-        for j in 0..(N/2) {
+        let mut y = C::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(N));
+
+        for j in 0..(N / 2) {
             let tmp = w * y_odd[j];
             y[j] = y_even[j] + tmp;
-            y[j + N/2] = y_even[j] - tmp; 
+            y[j + N / 2] = y_even[j] - tmp;
             w *= wn;
         }
         y
     }
 }
 
-impl<C> Fft for C
+impl<C, F> Fft<F> for C
 where 
-    Self: IntoIterator + FromIterator<<Self as IntoIterator>::Item> + IndexMut<usize, Output = <Self as IntoIterator>::Item>,
-    Self: Deref<Target = [<Self as IntoIterator>::Item]> + Clone,
-    <Self as IntoIterator>::Item: Float + FloatConst + NumAssign + 'static,
-    usize: AsPrimitive<<Self as IntoIterator>::Item>
+    Self: IntoIterator<Item = F> + FromIterator<F> + Clone,
+    <Self as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'a> &'a Self: IntoIterator<Item = &'a F>,
+    for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>
 {}
 
-
-
-pub fn fft_pf<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-{
-    std::unimplemented!();
-}
-
-pub fn fft_bluestein<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-{
-    std::unimplemented!();
-}
-
-pub fn ifft_ct<T: FloatVal>(x: &Array1<Complex<T>>) -> Array1<T> 
-{
-    std::unimplemented!();
-}
 
 
 pub fn zero_pad<T: Num + Copy>(x: &Array1<T>) -> Option<Array1<T>> 
@@ -357,114 +324,94 @@ macro_rules! fftfreq {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
-    #[allow(dead_code)]
-    #[allow(unused_variables)]
+    
     use super::*;
     use crate::io::{read_json, Data};
     use crate::test_utils as test;
     use ndarray::prelude::*;
 
-    #[test]
-    fn test_fft_ct_trait() {
-        let json_data = read_json("datasets/fft/fft/fft.json");
-        let output: Vec<Complex<f64>> = match json_data.input_data {
-            Data::<f64>::Array(input) => input.fft_ct(),
-            _ => panic!("Read the input data incorrectly")
-        };
-
-        match json_data.output_data {
-            Data::ComplexVals { mag, phase} => {
-                for i in 0..mag.len() {
-                    let mag_calc = output[i].norm();
-                    let phase_calc = output[i].arg();
-                    assert!(test::nearly_equal(mag_calc, mag[i]), 
-                        "[mag] {} != {}", mag_calc, mag[i]);
-
-                    assert!(test::nearly_equal(wrap_phase(phase_calc), phase[i]), 
-                        "[phase] {} != {}", wrap_phase(phase_calc), phase[i]);
+    macro_rules! test_fft_ct_func {
+        ($I:ty, $C:ty, $F:ty) => {
+            let json_data = read_json("datasets/fft/fft/fft.json");
+            let output: $C = match json_data.input_data {
+                Data::<$F>::Array(input) => fft_ct::<$I, $C, $F>(&(input.into())),
+                _ => panic!("Read the input data incorrectly")
+            };
+            match json_data.output_data {
+                Data::ComplexVals { mag, phase} => {
+                    for i in 0..mag.len() {
+                        let mag_calc = output[i].norm();
+                        let phase_calc = output[i].arg();
+                        assert!(test::nearly_equal(mag_calc, mag[i]), 
+                            "[mag] {} != {}", mag_calc, mag[i]);
+                        assert!(test::nearly_equal(wrap_phase(phase_calc), phase[i]), 
+                            "[phase] {} != {}", wrap_phase(phase_calc), phase[i]);
+                    }
                 }
+                _ => panic!("Read the output data incorrectly")
             }
-            _ => panic!("Read the output data incorrectly")
-        }
-    }
-
-    #[test]
-    fn test_fft_ct_func() {
-        let json_data = read_json("datasets/fft/fft/fft.json");
-        let output: Vec<Complex<f64>> = match json_data.input_data {
-            Data::<f64>::Array(input) => fft_ct(&input),
-            _ => panic!("Read the input data incorrectly")
         };
-
-        match json_data.output_data {
-            Data::ComplexVals { mag, phase} => {
-                for i in 0..mag.len() {
-                    let mag_calc = output[i].norm();
-                    let phase_calc = output[i].arg();
-                    assert!(test::nearly_equal(mag_calc, mag[i]), 
-                        "[mag] {} != {}", mag_calc, mag[i]);
-
-                    assert!(test::nearly_equal(wrap_phase(phase_calc), phase[i]), 
-                        "[phase] {} != {}", wrap_phase(phase_calc), phase[i]);
-                }
-            }
-            _ => panic!("Read the output data incorrectly")
-        }
     }
 
-    #[test]
-    fn test_fft_ct_array_func() {
-        let json_data = read_json("datasets/fft/fft/fft.json");
-        let output: Array1<Complex<f64>> = match json_data.input_data {
-            Data::<f64>::Array(input) => fft_ct::<Vec<f64>, Array1<Complex<f64>>, f64>(&input),
-            _ => panic!("Read the input data incorrectly")
+    macro_rules! test_fft_ct_method {
+        ($I:ty, $C:ty, $F:ty) => {
+            let json_data = read_json("datasets/fft/fft/fft.json");
+            let output: $C = match json_data.input_data {
+                Data::<$F>::Array(input) => Into::<$I>::into(input).fft(),
+                _ => panic!("Read the input data incorrectly")
+            };
+            match json_data.output_data {
+                Data::ComplexVals { mag, phase} => {
+                    for i in 0..mag.len() {
+                        let mag_calc = output[i].norm();
+                        let phase_calc = output[i].arg();
+                        assert!(test::nearly_equal(mag_calc, mag[i]), 
+                            "[mag] {} != {}", mag_calc, mag[i]);
+                        assert!(test::nearly_equal(wrap_phase(phase_calc), phase[i]), 
+                            "[phase] {} != {}", wrap_phase(phase_calc), phase[i]);
+                    }
+                }
+                _ => panic!("Read the output data incorrectly")
+            }
         };
-
-        match json_data.output_data {
-            Data::ComplexVals { mag, phase} => {
-                for i in 0..mag.len() {
-                    let mag_calc = output[i].norm();
-                    let phase_calc = output[i].arg();
-                    assert!(test::nearly_equal(mag_calc, mag[i]), 
-                        "[mag] {} != {}", mag_calc, mag[i]);
-
-                    assert!(test::nearly_equal(wrap_phase(phase_calc), phase[i]), 
-                        "[phase] {} != {}", wrap_phase(phase_calc), phase[i]);
-                }
-            }
-            _ => panic!("Read the output data incorrectly")
-        }
-    }
-    
-    #[test]
-    fn dtft_sine() {
-        std::unimplemented!();
     }
 
+    //#[test]
+    //fn test_fft_ct_vec_func_f32() {
+    //    test_fft_ct_func!(Vec<f32>, Vec<Complex<f32>>, f32);
+    //}
     #[test]
-    fn fft_cooley_tukey_sine() {
-        std::unimplemented!();
+    fn test_fft_ct_vec_method_f64() {
+        test_fft_ct_method!(Vec<f64>, Vec<Complex<f64>>, f64);
+    }
+    #[test]
+    fn test_fft_ct_arr_method_f64() {
+        test_fft_ct_method!(Array1<f64>, Array1<Complex<f64>>, f64);
+    }
+    #[test]
+    fn test_fft_ct_mix1_method_f64() {
+        test_fft_ct_method!(Vec<f64>, Array1<Complex<f64>>, f64);
+    }
+    #[test]
+    fn test_fft_ct_mix2_method_f64() {
+        test_fft_ct_method!(Array1<f64>, Vec<Complex<f64>>, f64);
     }
 
     #[test]
-    fn fftfreq() {
-        std::unimplemented!();
+    fn test_fft_ct_vec_func_f64() {
+        test_fft_ct_func!(Vec<f64>, Vec<Complex<f64>>, f64);
     }
-
     #[test]
-    fn zero_pad() {
-        std::unimplemented!();
+    fn test_fft_ct_arr_func_f64() {
+        test_fft_ct_func!(Array1<f64>, Array1<Complex<f64>>, f64);
     }
-
     #[test]
-    fn fft_macro() {
-        std::unimplemented!();
+    fn test_fft_ct_mix1_func_f64() {
+        test_fft_ct_func!(Vec<f64>, Array1<Complex<f64>>, f64);
     }
-
     #[test]
-    fn fftfreq_macro() {
-        std::unimplemented!();
+    fn test_fft_ct_mix2_func_f64() {
+        test_fft_ct_func!(Array1<f64>, Vec<Complex<f64>>, f64);
     }
 }
 

@@ -4,6 +4,7 @@ use std::path::{PathBuf};
 use std::env;
 use std::fs;
 use walkdir::{DirEntry, WalkDir};
+use num_traits::{Float, FloatConst, NumAssignOps};
 
 #[allow(dead_code)]
 
@@ -103,20 +104,20 @@ pub enum Data<T> {
 }
 
 #[derive(Deserialize, Serialize, Debug)]
-pub struct Json {
-    pub input_data: Data<f64>,
-    pub output_data: Data<f64>, 
+pub struct Json<F: Float + FloatConst + NumAssignOps + 'static> {
+    pub input_data: Data<F>,
+    pub output_data: Data<F>, 
     pub function: String,
     pub path: String
 }
 
-pub fn read_json(lib_path: &str) -> Json {
+pub fn read_json<'a, F: Float + FloatConst + NumAssignOps + 'static + for<'de> Deserialize<'de>>(lib_path: &str) -> Json<F> {
     let path = PathManage::new("RusticFourier");
     let json_path = path.path(lib_path).unwrap();//.as_os_str().to_str().unwrap();
     let file = fs::File::open(json_path).unwrap();
     //let reader = std::io::BufReader::new(file);
 
-    let data: Json = serde_json::from_reader(file).unwrap();
+    let data: Json<F> = serde_json::from_reader(file).unwrap();
     return data;
 }
 
@@ -138,7 +139,7 @@ mod tests {
         let p = io::read_json("datasets/wavegen/sine/sine.json");
         let epsilon = 0.000000000000001; 
         match p.input_data {
-            io::Data::<_>::Array(vals) => {
+            io::Data::<f64>::Array(vals) => {
                 for i in 0..input.len() {
                     if input[i] == 0.0 {
                         assert!(vals[i] == input[i]);
@@ -162,7 +163,7 @@ mod tests {
         let output_data = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let path = "datasets/io";
 
-        let p = io::read_json("datasets/io/read_json.json");
+        let p: io::Json<f64> = io::read_json("datasets/io/read_json.json");
 
         match p.input_data {
             io::Data::<_>::ComplexVals{mag: r_mag, phase: r_phase} => {
@@ -218,7 +219,7 @@ mod tests {
         let output_data = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
         let path = "datasets/io";
 
-        let p: io::Json = serde_json::from_str(data).unwrap();
+        let p: io::Json<f64> = serde_json::from_str(data).unwrap();
 
         match p.input_data {
             io::Data::<_>::ComplexVals{mag: r_mag, phase: r_phase} => {
