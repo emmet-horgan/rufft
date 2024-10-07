@@ -6,7 +6,9 @@ use num_traits::{Float, FloatConst, Num, NumAssign, AsPrimitive, NumOps, NumAssi
 //use num_traits::cast::AsPrimitive;
 use std::ops::{Deref, DivAssign, Index, IndexMut, Mul};
 use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator};
-use crate::traits::FloatCollection;
+
+use crate::traits::{Collection, CollectionRef};
+//use crate::traits::FloatCollection;
 
 /*
 pub struct DftIter<'a, T, U>
@@ -357,7 +359,7 @@ mod tests {
         ($I:ty, $C:ty, $F:ty) => {
             let json_data = read_json("datasets/fft/fft/fft.json");
             let output: $C = match json_data.input_data {
-                Data::<$F>::Array(input) => Into::<$I>::into(input).fft(),
+                Data::<$F>::Array(input) => Into::<$I>::into(input).fft_ct(),
                 _ => panic!("Read the input data incorrectly")
             };
             match json_data.output_data {
