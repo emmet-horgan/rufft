@@ -250,7 +250,8 @@ mod tests {
 
     // Really loose tolerances for f32 because we're checking complex numbers
     // which is more difficult, especially near zero where the phase can suddenly
-    // jump by π for a small change in the real or imaginary part.
+    // jump by π for a small change in the real or imaginary part. Precision errors
+    // for FFT algorithms can also accumulate. These values were found by trial-and-error.
     const ATOL_F32: f32 = 1e-1;
     const RTOL_F32: f32 = 1e-1;
 
@@ -270,10 +271,6 @@ mod tests {
                 assert!(test::nearly_equal_complex(*dft_comp, *fft_comp, $rtol, $atol), 
                     "complex[{} != {}]\nmag[{} != {}]\nphase[{} != {}]", 
                     dft_comp, fft_comp, dft_comp.norm(), fft_comp.norm(), dft_comp.arg(), fft_comp.arg());
-                //assert!(test::nearly_equal(dft_comp.norm(), fft_comp.norm()), 
-                //    "complex[{:?} != {:?}] {} != {}", dft_comp, fft_comp, dft_comp.norm(), fft_comp.norm());
-                //assert!(test::nearly_equal(dft_comp.arg(), fft_comp.arg()), 
-                //    "complex[{:?} != {:?}] {} != {}", dft_comp, fft_comp, dft_comp.arg(), fft_comp.arg());
             }
         }
     }
