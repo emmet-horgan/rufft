@@ -1,4 +1,4 @@
-#![allow(non_snake_case)]
+use num::Integer;
 use num_complex::Complex;
 use num_traits::{Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps};
 use std::ops::IndexMut;
@@ -21,9 +21,9 @@ where
 {
     move |samples: I| -> C {
         samples.into_iter().map(|&w|{
-            x.into_iter().enumerate().map(|(n, j)| {
-                let phase = Complex::<F>::new(F::zero(), -n.as_() * w);
-                Complex::<F>::new(*j, F::zero()) * phase.exp()
+            x.into_iter().enumerate().map(|(i, &f)| {
+                let phase = Complex::<F>::new(F::zero(), -i.as_() * w);
+                Complex::<F>::new(f, F::zero()) * phase.exp()
             }).sum()
         }).collect()
     }
@@ -43,14 +43,14 @@ where
     // Bound C to a collection of Complex<F>
     C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
 {
-    let N = x.into_iter().len();
+    let n = x.into_iter().len();
     let zero = F::zero();
     let twopi = F::TAU();
-    x.into_iter().enumerate().map(|(k, _)|{
-        x.into_iter().enumerate().map(|(n, j)| {
-            let phase = Complex::<F>::new(zero, (twopi * n.as_() * k.as_()) / N.as_());
-            Complex::<F>::new(*j, zero) * phase.exp()
-        }).sum::<Complex<F>>() * Complex::<F>::new(F::one() / N.as_(), zero)
+    x.into_iter().enumerate().map(|(i, _)|{
+        x.into_iter().enumerate().map(|(j, &f)| {
+            let phase = Complex::<F>::new(zero, (twopi * j.as_() * i.as_()) / n.as_());
+            Complex::<F>::new(f, zero) * phase.exp()
+        }).sum::<Complex<F>>() * Complex::<F>::new(F::one() / n.as_(), zero)
     }).collect()
 }
 
@@ -67,13 +67,13 @@ where
     // Bound C to a collection of Complex<F>
     C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
 {
-    let N = x.into_iter().len();
+    let n = x.into_iter().len();
     let zero = F::zero();
     let twopi = F::TAU();
-    x.into_iter().enumerate().map(|(k, _)|{
-        x.into_iter().enumerate().map(|(n, j)| {
-            let phase = Complex::<F>::new(zero, -(twopi * n.as_() * k.as_()) / N.as_());
-            Complex::<F>::new(*j, zero) * phase.exp()
+    x.into_iter().enumerate().map(|(i, _)|{ // Change to a range of some kind
+        x.into_iter().enumerate().map(|(j, &f)| {
+            let phase = Complex::<F>::new(zero, -(twopi * j.as_() * i.as_()) / n.as_());
+            Complex::<F>::new(f, zero) * phase.exp()
         }).sum()
     }).collect()
 }
@@ -91,17 +91,17 @@ where
     // Bound C to a collection of Complex<F>
     C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
 {
-    let N = x.into_iter().len();
+    let n = x.into_iter().len();
     let zero = F::zero();
     let one = F::one();
     let twopi = F::TAU();
 
-    if N == 1 {
+    if n == 1 {
         x.into_iter()
             .map(|&x| Complex::new(x, zero))
             .collect()
     } else {
-        let wn = Complex::new(zero, -twopi / (N.as_()));
+        let wn = Complex::new(zero, -twopi / (n.as_()));
         let wn = wn.exp();
         let mut w = Complex::new(one, zero);
 
@@ -111,71 +111,112 @@ where
         let y_even: C = fft_ct(&x_even);
         let y_odd: C = fft_ct(&x_odd);
 
-        let mut y = C::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(N));
+        let mut y = C::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(n));
 
-        for j in 0..(N / 2) {
+        for j in 0..(n / 2) {
             let tmp = w * y_odd[j];
             y[j] = y_even[j] + tmp;
-            y[j + N / 2] = y_even[j] - tmp;
+            y[j + n / 2] = y_even[j] - tmp;
             w *= wn;
         }
         y
     }
 }
 
-//pub fn fftfreq(n: usize, d: f64) -> Array1<f64> {
-//where 
-//    // Bound F to float types
-//    F: Float + FloatConst + NumAssign + 'static,
-//    C: FromIterator<F> + Clone,
-//{
-//    let zero = F::zero();
-//    let one = F::one();
-//    let two = F::TAU();
-//    let n_t: F = n.as_();
-//    
-//    let part0 :Array1<T>;
-//    let part1 :Array1<T>;
-//    if n % 2 == 0 {
-//        part0  = Array1::<T>::range(zero, n_t / two, one);
-//        part1  = Array1::<T>::range(-n_t / two, -zero, one);
-//        
-//    }
-//    else {
-//        part0 = Array1::<T>::range(zero, (n_t - one) / two, one);
-//        part1 = Array1::<T>::range(-(n_t - one) / two, -zero, one);
-//    }
-//
-//    let mut arr = ndarray::concatenate![Axis(0), part0, part1];
-//    
-//    arr /= p.as_() * n_t;
-//    return arr;
-//}
 
-//pub fn zero_pad<T: Num + Copy>(x: &Array1<T>) -> Option<Array1<T>> 
-//{
-//    let zero = T::zero();
-//    let N = x.len();
-//
-//    // Add a check for N = 2^{m}, zero pad if not. Only executed once regardsless of recursion.
-//    if (N != 0) && (N & (N - 1)) != 0 {
-//        let mut power = 1;
-//        while power < N {
-//            power <<= 1;
-//        }
-//        let mut y = Array1::<T>::zeros(power);
-//        for i in 0..N {
-//            y[i] = x[i];
-//        }
-//        for i in N..power {
-//            y[i] = zero;
-//        }
-//        return Some(y);
-//    }
-//    else {
-//        return None;
-//    }
-//} 
+pub fn fftfreq<I, F>(n: usize, d: F) -> I
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+{
+    let time = d * n.as_();
+    (0..n).map(|i| i.as_() / time).collect()
+}
+
+pub fn fftfreq_balanced<I, F>(n: usize, d: F) -> I 
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>,
+    i32: AsPrimitive<F>,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+{
+    let time = d * n.as_();
+    let (pos_end, neg_start) = if n.is_even() {
+        ((n as i32 / 2) -1 , -(n as i32 / 2))
+    } else {
+        ((n as i32 - 1) / 2, -(n as i32 - 1) / 2)
+    };
+    let pos_iter = 0..=pos_end;
+    let neg_iter = neg_start..=-1;
+
+    pos_iter.chain(neg_iter).map(|i| i.as_() / time).collect()
+}
+
+pub fn pad<I, F>(x: &I, padding: F, len: usize) -> Result<I, ()> 
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    let n = x.into_iter().len();
+    if len < n {
+        return Err(());
+    }
+    let num_padding = len - n;
+    let pad_iter = std::iter::repeat(padding).take(num_padding);
+    Ok(I::from_iter(x.into_iter().cloned().chain(pad_iter)))
+}
+
+
+pub fn zero_pad<I, F>(n: usize, x: &I) -> Result<I, ()> 
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    Ok(pad(x, F::zero(), n)?)
+}
+
+
+pub fn pad_to_nearest_power_of_two<I, F>(x: &I, padding: F) -> Result<I, ()>
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    let n = x.into_iter().len();
+    if n.is_power_of_two() {
+        Ok(x.clone())
+    } else {
+        Ok(pad(x, padding, n.next_power_of_two())?) // Pad to the nearest power of 2
+    }
+}
+
+pub fn zero_pad_to_nearest_power_of_two<I, F>(x: &I) -> Result<I, ()>
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    pad_to_nearest_power_of_two(x, F::zero())
+}
 
 /// Wraps an angle in radians to the range (-π, π].
 pub fn wrap_phase<F: Float + FloatConst + NumAssignOps>(angle: F) -> F {
@@ -241,7 +282,7 @@ mod tests {
     
     use super::*;
     use crate::traits::Fft; // For methods
-    use crate::io::{read_json, Data};
+    use crate::io::{read_json, Data, Json};
     use crate::test_utils as test;
     use ndarray::prelude::*;
 
@@ -352,7 +393,6 @@ mod tests {
     #[test]
     fn test_macro_dft_vec_func_f64() {
         test_dft_fft_ct!(Vec<f64>, Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
-        //test_dft_func!(Vec<f64>, Vec<Complex<f64>>, f64);
     }
 
     #[test]
@@ -388,6 +428,26 @@ mod tests {
     fn test_fft_ct_mix2_func_f64() {
         test_fft_ct_func!(Array1<f64>, Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
     }
+
+   #[test]
+    fn test_fftfreq_balanced() {
+        let json_data: Json<f64> = read_json("datasets/fft/fftfreq/fftfreq.json");
+        let (n, d) = match json_data.input_data {
+             Data::FftFreqVals { n, d } => (n, d),
+             _ => panic!("Read the input data incorrectly")
+        };
+        let scipy: Vec<f64> = match json_data.output_data {
+        Data::<f64>::Array(output) => output,
+        _ => panic!("Read the input data incorrectly")
+        };
+
+        let freqs = fftfreq_balanced::<Vec<f64>, f64>(n as usize, d);
+
+        for (&f1, &f2) in freqs.iter().zip(scipy.iter()) {
+            assert!(test::nearly_equal(f1, f2, RTOL_F64, ATOL_F64),
+                "{} != {}", f1, f2);
+        }
+   }
 }
 
 
