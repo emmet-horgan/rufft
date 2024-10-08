@@ -2,7 +2,7 @@ use num::Integer;
 use num_complex::Complex;
 use num_traits::{Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps};
 use std::ops::IndexMut;
-use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator};
+use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator, Sum};
 use crate::traits::{Collection, CollectionRef};
 
 
@@ -33,15 +33,15 @@ where
 pub fn idft<I, C, F>(x: &I) -> C
 where
     // Bound F to float types
-    F: Float + FloatConst + NumAssign + 'static,
+    F: Float + FloatConst + NumAssign + Sum + 'static,
     // Bound I to to an iterable collection of F
-    I: FromIterator<F> + Clone,
-    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    I: FromIterator<Complex<F>> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
     for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
     // Ensure a usize can be converted to F, ideally this can be removed
     usize: AsPrimitive<F>,
     // Bound C to a collection of Complex<F>
-    C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
+    C: FromIterator<F> + IndexMut<usize, Output = F>,
 {
     let n = x.into_iter().len();
     let zero = F::zero();
@@ -49,8 +49,8 @@ where
     x.into_iter().enumerate().map(|(i, _)|{
         x.into_iter().enumerate().map(|(j, &f)| {
             let phase = Complex::<F>::new(zero, (twopi * j.as_() * i.as_()) / n.as_());
-            Complex::<F>::new(f, zero) * phase.exp()
-        }).sum::<Complex<F>>() * Complex::<F>::new(F::one() / n.as_(), zero)
+            f * phase.exp()
+        }).map(|v| v.re).sum::<F>() * (F::one() / n.as_())
     }).collect()
 }
 
@@ -123,6 +123,131 @@ where
     }
 }
 
+pub fn fft_ct_complex<I, F>(x: &I) -> I
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    // Ensure a usize can be converted to F, ideally this can be removed
+    usize: AsPrimitive<F>,
+{
+    let n = x.into_iter().len();
+    let n_f: F = n.as_();
+    let zero = Complex::new(F::zero(), F::zero());
+    let one_real = Complex::new(F::one(), F::zero());
+    //let one_complex = Complex::new(F::zero(), F::one());
+    //let twopi_real = Complex::new(F::TAU(), F::zero());
+    let twopi_complex = Complex::new(F::zero(), F::TAU());
+
+    if n == 1 {
+        x.into_iter().cloned().collect()
+    } else {
+        let wn = -twopi_complex / n_f;
+        //let wn = Complex::new(zero, -twopi / (n.as_()));
+        let wn = wn.exp();
+        let mut w = one_real;
+
+        let x_even: I = x.into_iter().step_by(2).cloned().collect();
+        let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
+
+        let y_even: I = fft_ct_complex(&x_even);
+        let y_odd: I = fft_ct_complex(&x_odd);
+
+        let mut y = I::from_iter(std::iter::repeat(zero).take(n));
+
+        for j in 0..(n / 2) {
+            let tmp = w * y_odd[j];
+            y[j] = y_even[j] + tmp;
+            y[j + n / 2] = y_even[j] - tmp;
+            w *= wn;
+        }
+        y
+    }
+}
+
+fn ifft_ct_internal<I, F>(x: &I) -> I
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    // Ensure a usize can be converted to F
+    usize: AsPrimitive<F>,
+    // Bound C to a collection of Complex<F>
+    //C: FromIterator<F> + IndexMut<usize, Output = F>,
+{
+    let n = x.into_iter().len();
+    let zero = F::zero();
+    let one = F::one();
+    let twopi = F::TAU();
+
+    if n == 1 {
+        x.into_iter().cloned().collect()
+    } else {
+        let wn = Complex::new(zero, twopi / (n.as_()));
+        let wn = wn.exp();
+        let mut w = Complex::new(one, zero);
+
+        let x_even: I = x.into_iter().step_by(2).cloned().collect();
+        let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
+
+        let y_even: I = ifft_ct_internal(&x_even);
+        let y_odd: I = ifft_ct_internal(&x_odd);
+
+        let mut y = I::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(n));
+
+        for j in 0..(n / 2) {
+            let tmp = w * y_odd[j];
+            y[j] = y_even[j] + tmp;
+            y[j + n / 2] = y_even[j] - tmp;
+            w *= wn;
+        }
+        y
+    }
+}
+
+pub fn ifft_ct<I, C, F>(x: &I) -> C
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    // Ensure a usize can be converted to F
+    usize: AsPrimitive<F>,
+    // Bound C to a collection of Complex<F>
+    C: FromIterator<F> + IndexMut<usize, Output = F>,
+{   
+    let n = x.into_iter().len();
+    let tmp: I = ifft_ct_internal(x);
+    tmp.into_iter().map(|x| x.re / n.as_()).collect()
+}
+
+pub fn ifft_ct_complex<I, C, F>(x: &I) -> C
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    // Ensure a usize can be converted to F
+    usize: AsPrimitive<F>,
+    // Bound C to a collection of Complex<F>
+    C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
+{   
+    let n: F = x.into_iter().len().as_();
+    let tmp: I = ifft_ct_internal(x);
+    tmp.into_iter().map(|x| x / n).collect()
+}
+
+
 
 pub fn fftfreq<I, F>(n: usize, d: F) -> I
 where
@@ -175,6 +300,64 @@ where
     Ok(I::from_iter(x.into_iter().cloned().chain(pad_iter)))
 }
 
+pub fn pad_complex<I, F>(x: &I, padding: Complex<F>, len: usize) -> Result<I, ()> 
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    let n = x.into_iter().len();
+    if len < n {
+        return Err(());
+    }
+    let num_padding = len - n;
+    let pad_iter = std::iter::repeat(padding).take(num_padding);
+    Ok(I::from_iter(x.into_iter().cloned().chain(pad_iter)))
+}
+
+pub fn pad_to_nearest_power_of_two_complex<I, F>(x: &I, padding: Complex<F>) -> Result<I, ()>
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    let n = x.into_iter().len();
+    if n.is_power_of_two() {
+        Ok(x.clone())
+    } else {
+        Ok(pad_complex(x, padding, n.next_power_of_two())?) // Pad to the nearest power of 2
+    }
+}
+
+pub fn zero_pad_complex<I, F>(n: usize, x: &I) -> Result<I, ()> 
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    Ok(pad_complex(x, Complex::new(F::zero(), F::zero()), n)?)
+}
+
+pub fn zero_pad_to_nearest_power_of_two_complex<I, F>(x: &I) -> Result<I, ()>
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<Complex<F>> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+{
+    pad_to_nearest_power_of_two_complex(x, Complex::new(F::zero(), F::zero()))
+}
 
 pub fn zero_pad<I, F>(n: usize, x: &I) -> Result<I, ()> 
 where
@@ -227,6 +410,91 @@ pub fn wrap_phase<F: Float + FloatConst + NumAssignOps>(angle: F) -> F {
     } else {
         angle
     }
+}
+
+pub fn chirp_complex<I, F>(n: usize) -> I
+where 
+    F: Float + FloatConst + NumAssign + 'static,
+    I: FromIterator<Complex<F>> + Clone,
+    usize: AsPrimitive<F>
+{
+    (0..n).map(|i| {
+        Complex::from_polar(F::one(), 
+        (F::PI() * i.as_() * i.as_()) / n.as_())
+    }).collect()
+}
+
+pub fn inverse_chirp_complex<I, F>(n: usize) -> I
+where 
+    F: Float + FloatConst + NumAssign + 'static,
+    I: FromIterator<Complex<F>> + Clone,
+    usize: AsPrimitive<F>
+{
+    (0..n).map(|i| {
+        Complex::from_polar(F::one(), 
+        (-F::one() * F::PI() * i.as_() * i.as_()) / n.as_())
+    }).collect()
+}
+
+pub fn fft_bluestein<I, C, F>(x: &I) -> C
+where
+    // Bound F to float types
+    F: Float + FloatConst + NumAssign + 'static + std::fmt::Debug,
+    // Bound I to to an iterable collection of F
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    // Ensure a usize can be converted to F, ideally this can be removed
+    usize: AsPrimitive<F>,
+    // Bound C to a collection of Complex<F>
+    C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>> + Clone,
+    for<'a> &'a C: IntoIterator<Item = &'a Complex<F>>,
+    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator + DoubleEndedIterator,
+{
+    let n = x.into_iter().len();
+    let zero = F::zero();
+    let one = F::one();
+    let twopi = F::TAU();
+    
+    let m = (2 * n) -1;
+    let fft_len = m.next_power_of_two(); // Just use cooley-tukey for now
+    let zero_pad_len = fft_len - m + n;
+    let reflect_len = fft_len - m;
+
+    let a: C = inverse_chirp_complex::<C, F>(n)
+        .into_iter()
+        .zip(x.into_iter())
+        .map(|(c, v)| c * v)
+        .collect();
+    let b: C = chirp_complex(n);
+    let reflection: C = b.into_iter().skip(1).take(n - 1).rev().cloned().collect();
+
+    let a = zero_pad_complex(fft_len, &a).expect("The impossible occurred");
+    let b = zero_pad_complex(zero_pad_len, &b).expect("The impossible occurred");
+
+    let b: C = b.into_iter().chain(reflection.into_iter()).cloned().collect();
+
+    assert_eq!(b.into_iter().len(), a.into_iter().len(),
+        "{} != {}", b.into_iter().len(), a.into_iter().len());
+    for i in 1..n {
+        assert_eq!(b[i], b[fft_len - i])
+    }
+    let afft = fft_ct_complex(&a);
+    let bfft = fft_ct_complex(&b);
+    let convolution: C = afft
+        .into_iter()
+        .zip(bfft.into_iter())
+        .map(|(a, b)| a * b)
+        .collect();
+    let tmp: C = ifft_ct_complex(&convolution);
+    let product: C = inverse_chirp_complex(n);
+    tmp.into_iter()
+        .zip(product.into_iter())
+        .map(|(a, b)| a * b)
+        .collect()
+
+
+
 }
 
 #[macro_export]
@@ -316,11 +584,78 @@ mod tests {
         }
     }
 
+    macro_rules! test_idft_func {
+        ($I:ty, $C:ty, $F:ty, $rtol:expr, $atol:expr) => {
+            let json_data = read_json("datasets/fft/fft/fft.json");
+            let output: $C = match json_data.output_data {
+                Data::ComplexVals { mag, phase } => {
+                    let input: $I = std::iter::zip(mag, phase).map(|(m, p)| Complex::from_polar(m, p)).collect();
+                    idft::<$I, $C, $F>(&(input.into()))
+                },
+                _ => panic!("Read the input data incorrectly")
+            };
+            match json_data.input_data {
+                Data::<$F>::Array(input) => {
+                    for i in 0..input.len() {
+                        assert!(test::nearly_equal(output[i], input[i], $rtol, $atol), 
+                            "{} != {}", output[i], input[i]);
+                    }
+                }
+                _ => panic!("Read the output data incorrectly")
+            }
+        };
+    }
+
+    macro_rules! test_ifft_ct_func {
+        ($I:ty, $C:ty, $F:ty, $rtol:expr, $atol:expr) => {
+            let json_data = read_json("datasets/fft/fft/fft.json");
+            let output: $C = match json_data.output_data {
+                Data::ComplexVals { mag, phase } => {
+                    let input: $I = std::iter::zip(mag, phase).map(|(m, p)| Complex::from_polar(m, p)).collect();
+                    ifft_ct::<$I, $C, $F>(&(input.into()))
+                },
+                _ => panic!("Read the input data incorrectly")
+            };
+            match json_data.input_data {
+                Data::<$F>::Array(input) => {
+                    for i in 0..input.len() {
+                        assert!(test::nearly_equal(output[i], input[i], $rtol, $atol), 
+                            "{} != {}", output[i], input[i]);
+                    }
+                }
+                _ => panic!("Read the output data incorrectly")
+            }
+        };
+    }
+
     macro_rules! test_fft_ct_func {
         ($I:ty, $C:ty, $F:ty, $rtol:expr, $atol:expr) => {
             let json_data = read_json("datasets/fft/fft/fft.json");
             let output: $C = match json_data.input_data {
                 Data::<$F>::Array(input) => fft_ct::<$I, $C, $F>(&(input.into())),
+                _ => panic!("Read the input data incorrectly")
+            };
+            match json_data.output_data {
+                Data::ComplexVals { mag, phase} => {
+                    for i in 0..mag.len() {
+                        let mag_calc = output[i].norm();
+                        let phase_calc = output[i].arg();
+                        assert!(test::nearly_equal(mag_calc, mag[i], $rtol, $atol), 
+                            "[mag] {} != {}", mag_calc, mag[i]);
+                        assert!(test::nearly_equal(wrap_phase(phase_calc), phase[i], $rtol, $atol), 
+                            "[phase] {} != {}", wrap_phase(phase_calc), phase[i]);
+                    }
+                }
+                _ => panic!("Read the output data incorrectly")
+            }
+        };
+    }
+
+    macro_rules! test_fft_bluestein_func {
+        ($I:ty, $C:ty, $F:ty, $rtol:expr, $atol:expr) => {
+            let json_data = read_json("datasets/fft/fft/fft.json");
+            let output: $C = match json_data.input_data {
+                Data::<$F>::Array(input) => fft_bluestein::<$I, $C, $F>(&(input.into())),
                 _ => panic!("Read the input data incorrectly")
             };
             match json_data.output_data {
@@ -447,7 +782,20 @@ mod tests {
             assert!(test::nearly_equal(f1, f2, RTOL_F64, ATOL_F64),
                 "{} != {}", f1, f2);
         }
-   }
+    }
+    #[test]
+    fn test_fft_bluestein_func() {
+        test_fft_bluestein_func!(Vec<f64>, Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+    }
+    #[test]
+    fn test_idft_func() {
+        test_idft_func!(Vec<Complex<f64>>, Vec<f64>, f64, RTOL_F64, ATOL_F64);
+    }
+
+    #[test]
+    fn test_ifft_ct_func() {
+        test_ifft_ct_func!(Vec<Complex<f64>>, Vec<f64>, f64, RTOL_F64, ATOL_F64);
+    }
 }
 
 
