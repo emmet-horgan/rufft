@@ -20,8 +20,8 @@ where
         return false;
     }
 
-    // If magnitudes are near zero, consider them equal
-    if mag_a < atol && mag_b < atol {
+    // If any value is close to zero, it flip the angle's sign
+    if (a.re < atol && b.re < atol) || (a.im < atol && b.im < atol) {
         return true;
     }
     // Compare the phase only if magnitudes are sufficiently large

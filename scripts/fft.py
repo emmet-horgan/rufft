@@ -1,7 +1,7 @@
 from scipy.fft import fft, fftfreq
 import numpy as np 
 import matplotlib.pyplot as plt
-from common import PathManage, Description, gen_sine_data, write_as_json
+from common import PathManage, Description, gen_sine_data, write_as_json, gen_complex_exp_data
 
 PATH = "datasets/fft"
 
@@ -35,6 +35,39 @@ def gen_fft_sine_data():
 
     write_as_json(desc)
 
+def gen_fft_complex_exp_data():
+    
+    # Arbitrary values
+    fsine = 2.0
+    fsample = 128.0  # Power of two
+    duration = 8.0
+
+    input_data = gen_complex_exp_data(fsine, fsample, duration)
+    desc = Description()
+    desc.path  = PATH
+    desc.input_data = {
+        "mag": np.abs(input_data).tolist(),
+        "phase": np.angle(input_data).tolist()
+    }
+    desc.ienum = "ComplexVals"
+    desc.output_data = fft(input_data)
+
+    mag = np.abs(desc.output_data)
+    phase = np.angle(desc.output_data)
+
+    desc.output_data = {
+        "mag": mag.tolist(),
+        "phase": phase.tolist()
+    }
+    desc.oenum = "ComplexVals"
+
+    desc.func = "complex_fft"
+
+    plt.plot(np.flip(fftfreq(int(np.ceil(duration * fsample)), 1/fsample)), mag)
+    plt.show()
+
+    write_as_json(desc)
+
 def gen_fftfreq_data():
 
     func = "fftfreq"
@@ -60,3 +93,4 @@ if __name__ == "__main__":
     gen_fft_sine_data()
     gen_fftfreq_data()
     gen_zero_pad_data()
+    gen_fft_complex_exp_data()
