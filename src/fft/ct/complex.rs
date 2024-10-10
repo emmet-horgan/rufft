@@ -1,10 +1,9 @@
 use num_complex::Complex;
-use num_traits::{Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps};
+use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use std::ops::IndexMut;
-use std::iter::{ExactSizeIterator, Iterator, FromIterator, IntoIterator};
-use crate::traits::{Collection, CollectionRef};
+use itertools::izip;
 
-pub fn fft<I, F>(x: &I) -> I
+pub fn fft<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -19,32 +18,35 @@ where
     let n_f: F = n.as_();
     let zero = Complex::new(F::zero(), F::zero());
     let one_real = Complex::new(F::one(), F::zero());
-    //let one_complex = Complex::new(F::zero(), F::one());
-    //let twopi_real = Complex::new(F::TAU(), F::zero());
     let twopi_complex = Complex::new(F::zero(), F::TAU());
+
     if n == 1 {
         x.into_iter().cloned().collect()
     } else {
         let wn = -twopi_complex / n_f;
-        //let wn = Complex::new(zero, -twopi / (n.as_()));
         let wn = wn.exp();
         let mut w = one_real;
+
         let x_even: I = x.into_iter().step_by(2).cloned().collect();
         let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
+
         let y_even: I = fft(&x_even);
         let y_odd: I = fft(&x_odd);
         let mut y = I::from_iter(std::iter::repeat(zero).take(n));
-        for j in 0..(n / 2) {
-            let tmp = w * y_odd[j];
-            y[j] = y_even[j] + tmp;
-            y[j + n / 2] = y_even[j] - tmp;
-            w *= wn;
-        }
+        
+        izip!(y_even.into_iter(), y_odd.into_iter())
+            .enumerate()
+            .for_each(|(j, (even, odd))| {
+                let tmp = w * odd;
+                y[j] = even + tmp;
+                y[j + n / 2] = even - tmp;
+                w *= wn;
+            });
         y
     }
 }
 
-pub(crate) fn ifft_internal<I, F>(x: &I) -> I
+pub(crate) fn ifft_internal<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -54,35 +56,39 @@ where
     for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
     // Ensure a usize can be converted to F
     usize: AsPrimitive<F>,
-    // Bound C to a collection of Complex<F>
-    //C: FromIterator<F> + IndexMut<usize, Output = F>,
 {
     let n = x.into_iter().len();
     let zero = F::zero();
     let one = F::one();
     let twopi = F::TAU();
+
     if n == 1 {
         x.into_iter().cloned().collect()
     } else {
         let wn = Complex::new(zero, twopi / (n.as_()));
         let wn = wn.exp();
         let mut w = Complex::new(one, zero);
+
         let x_even: I = x.into_iter().step_by(2).cloned().collect();
         let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
+
         let y_even: I = ifft_internal(&x_even);
         let y_odd: I = ifft_internal(&x_odd);
         let mut y = I::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(n));
-        for j in 0..(n / 2) {
-            let tmp = w * y_odd[j];
-            y[j] = y_even[j] + tmp;
-            y[j + n / 2] = y_even[j] - tmp;
-            w *= wn;
-        }
+
+        izip!(y_even.into_iter(), y_odd.into_iter())
+            .enumerate()
+            .for_each(|(j, (even, odd))| {
+                let tmp = w * odd;
+                y[j] = even + tmp;
+                y[j + n / 2] = even - tmp;
+                w *= wn;
+            });
         y
     }
 }
 
-pub fn ifft<I, C, F>(x: &I) -> C
+pub fn ifft<F, I, C>(x: &I) -> C
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -118,42 +124,42 @@ mod tests {
 
     #[test]
     fn test_fft_ct_vec_func_f64() {
-        test_complex_fft!(Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_complex_fft!(f64, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_fft_ct_arr_func_f64() {
-        test_complex_fft!(Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_complex_fft!(f64, Array1<Complex<f64>>,  RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_fft_ct_vec_func_f32() {
-        test_complex_fft!(Vec<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_complex_fft!(f32, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
 
     #[test]
     fn test_fft_ct_arr_func_f32() {
-        test_complex_fft!(Array1<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_complex_fft!(f32, Array1<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
     
     #[test]
     fn test_ifft_vec_f64() {
-        test_complex_ifft!(Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_complex_ifft!(f64, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_ifft_vec_f32() {
-        test_complex_ifft!(Vec<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_complex_ifft!(f32, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
 
     #[test]
     fn test_ifft_arr_f64() {
-        test_complex_ifft!(Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_complex_ifft!(f64, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_ifft_arr_f32() {
-        test_complex_ifft!(Array1<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_complex_ifft!(f32, Array1<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
     
 }

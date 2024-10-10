@@ -2,7 +2,7 @@ use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use num_complex::Complex;
 use std::ops::IndexMut;
 
-pub fn dft<I, F>(x: &I) -> I
+pub fn dft<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -27,7 +27,7 @@ where
     }).collect()
 }
 
-pub(crate) fn idft_internal<I, F>(x: &I) -> I
+pub(crate) fn idft_internal<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -50,7 +50,7 @@ where
     // of some kind. Need to reduce the amount of collections
 }
 
-pub fn idft<I, F>(x: &I) -> I
+pub fn idft<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -84,17 +84,17 @@ mod tests {
     
     #[test]
     fn test_dft_vec_f32() {
-        test_complex_dft!(Vec<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_complex_dft!(f32, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
 
     #[test]
     fn test_dft_vec_f64() {
-        test_complex_dft!(Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_complex_dft!(f64, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_dft_arr_f64() {
-        test_complex_dft!(Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_complex_dft!(f64, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
     
 }

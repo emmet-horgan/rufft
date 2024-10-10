@@ -7,7 +7,7 @@ use num_traits::{Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps};
 use std::ops::IndexMut;
 use crate::traits::{Collection, CollectionRef};
 
-pub fn dtft<I, C, F>(x: I) -> impl Fn(I) -> C
+pub fn dtft<F, I, C>(x: I) -> impl Fn(I) -> C
 where 
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -31,7 +31,7 @@ where
 }
 
 
-pub fn idft<I, C, F>(x: &I) -> C
+pub fn idft<F, I, C>(x: &I) -> C
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -47,7 +47,7 @@ where
     complex::idft_internal(x).into_iter().map(|x| x.re).collect()
 }
 
-pub fn dft<I, C, F>(x: &I) -> C
+pub fn dft<F, I, C>(x: &I) -> C
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -72,7 +72,7 @@ where
 }
 
 
-pub fn fftfreq<I, F>(n: usize, d: F) -> I
+pub fn fftfreq<F, I>(n: usize, d: F) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -84,7 +84,7 @@ where
     (0..n).map(|i| i.as_() / time).collect()
 }
 
-pub fn fftfreq_balanced<I, F>(n: usize, d: F) -> I 
+pub fn fftfreq_balanced<F, I>(n: usize, d: F) -> I 
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
@@ -139,35 +139,35 @@ mod tests {
 
     #[test]
     fn test_dft_vec_f32() {
-        test_dft!(Vec<f32>, Vec<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_dft!(f32, Vec<f32>, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
 
     #[test]
     fn test_dft_vec_f64() {
-        test_dft!(Vec<f64>, Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_dft!(f64, Vec<f64>, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
     #[test]
     fn test_dft_arr_f64() {
-        test_dft!(Array1<f64>, Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_dft!(f64, Array1<f64>, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
     #[test]
     fn test_dft_mix1_method_f64() {
-        test_dft!(Vec<f64>, Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_dft!(f64, Vec<f64>, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_idft_vec_f32() {
-        test_idft!(Vec<Complex<f32>>, Vec<f32>, f32, RTOL_F32, ATOL_F32);
+        test_idft!(f32, Vec<Complex<f32>>, Vec<f32>, RTOL_F32, ATOL_F32);
     }
 
     #[test]
     fn test_idft_vec_f64() {
-        test_idft!(Vec<Complex<f64>>, Vec<f64>, f64, RTOL_F64, ATOL_F64);
+        test_idft!(f64, Vec<Complex<f64>>, Vec<f64>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_idft_arr_f64() {
-        test_idft!(Array1<Complex<f64>>, Array1<f64>, f64, RTOL_F64, ATOL_F64);
+        test_idft!(f64, Array1<Complex<f64>>, Array1<f64>, RTOL_F64, ATOL_F64);
     }
 
    #[test]
@@ -182,7 +182,7 @@ mod tests {
         _ => panic!("Read the input data incorrectly")
         };
 
-        let freqs = fftfreq_balanced::<Vec<f64>, f64>(n as usize, d);
+        let freqs: Vec<_> = fftfreq_balanced(n as usize, d);
 
         for (&f1, &f2) in freqs.iter().zip(scipy.iter()) {
             assert!(test::nearly_equal(f1, f2, RTOL_F64, ATOL_F64),

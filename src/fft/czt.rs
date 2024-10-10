@@ -4,7 +4,7 @@ use std::ops::IndexMut;
 use super::ct;
 use crate::itertools::complex::zero_pad;
 
-fn chirp_complex<I, F>(n: usize) -> I
+fn chirp_complex<F, I>(n: usize) -> I
 where 
     F: Float + FloatConst + NumAssign + 'static,
     I: FromIterator<Complex<F>> + Clone,
@@ -28,7 +28,7 @@ where
     }).collect()
 }
 
-pub fn fft<I, C, F>(x: &I) -> C
+pub fn fft<F, I, C>(x: &I) -> C
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static + std::fmt::Debug,
@@ -68,6 +68,7 @@ where
         .zip(bfft.into_iter())
         .map(|(a, b)| a * b)
         .collect();
+
     let tmp: C = ct::complex::ifft(&convolution);
     let product: C = inverse_chirp_complex(n);
     tmp.into_iter()
@@ -94,35 +95,35 @@ mod tests {
 
     #[test]
     fn test_fft_ct_vec_func_f64() {
-        test_fft!(Vec<f64>, Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_fft!(f64, Vec<f64>, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
     #[test]
     fn test_fft_ct_arr_func_f64() {
-        test_fft!(Array1<f64>, Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_fft!(f64, Array1<f64>, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
     #[test]
     fn test_fft_ct_mix1_func_f64() {
-        test_fft!(Vec<f64>, Array1<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_fft!(f64, Vec<f64>, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
     #[test]
     fn test_fft_ct_mix2_func_f64() {
-        test_fft!(Array1<f64>, Vec<Complex<f64>>, f64, RTOL_F64, ATOL_F64);
+        test_fft!(f64, Array1<f64>, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
     }
 
     #[test]
     fn test_fft_ct_vec_func_f32() {
-        test_fft!(Vec<f32>, Vec<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_fft!(f32, Vec<f32>, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
     #[test]
     fn test_fft_ct_arr_func_f32() {
-        test_fft!(Array1<f32>, Array1<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_fft!(f32, Array1<f32>, Array1<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
     #[test]
     fn test_fft_ct_mix1_func_f32() {
-        test_fft!(Vec<f32>, Array1<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_fft!(f32, Vec<f32>, Array1<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
     #[test]
     fn test_fft_ct_mix2_func_f32() {
-        test_fft!(Array1<f32>, Vec<Complex<f32>>, f32, RTOL_F32, ATOL_F32);
+        test_fft!(f32, Array1<f32>, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
     }
 }
