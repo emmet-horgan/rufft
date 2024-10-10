@@ -1,8 +1,76 @@
 use num_traits::{NumAssign, Float, FloatConst, AsPrimitive};
-use num_complex::Complex;
+use num_complex::{ Complex, ComplexFloat };
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::IndexMut;
 use crate::fft;
+
+macro_rules! vec_impl_iterable {
+    ($item:ty) => {
+        impl Iterable<$item> for Vec<$item> {
+            type Iterator<'c> = std::slice::Iter<'c, $item>
+            where
+                Self: 'c;
+        
+            fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+                self.iter()
+            }
+        }
+    };
+}
+
+macro_rules! ndarray_impl_iterable {
+    ($item:ty) => {
+        impl Iterable<$item> for ndarray::Array1<$item> {
+            type Iterator<'c> = ndarray::iter::Iter<'c, $item, ndarray::Ix1>
+            where
+                Self: 'c;
+        
+            fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+                self.iter()
+            }
+        }
+    };
+}
+
+
+// We define an additional trait to extract the float type from the collection.
+pub trait FloatCollection {
+    type FloatType: Float + FloatConst + NumAssign + 'static;
+    type ComplexType: ComplexFloat<Real = Self::FloatType>;
+    type ComplexCollection: Iterable<Self::ComplexType>;
+}
+
+
+//impl<F: Float + FloatConst + NumAssign + 'static> FloatCollection for Vec<F> {
+//    type FloatType = F;
+//    type ComplexType = Complex<F>;
+//    type ComplexCollection = Vec<Complex<F>>;
+//}
+
+
+pub trait Iterable<T> {
+    // Type of iterator we return. Will return `Self::Item` elements.
+    type Iterator<'c>: ExactSizeIterator<Item = &'c T>
+    where
+        Self: 'c, T: 'c;
+
+    fn iter<'c>(&'c self) -> Self::Iterator<'c>;
+    
+    fn len(&self) -> usize {
+        self.iter().len()
+    }
+}
+
+vec_impl_iterable!(f64);
+vec_impl_iterable!(Complex<f64>);
+vec_impl_iterable!(f32);
+vec_impl_iterable!(Complex<f32>);
+
+ndarray_impl_iterable!(f64);
+ndarray_impl_iterable!(Complex<f64>);
+ndarray_impl_iterable!(f32);
+ndarray_impl_iterable!(Complex<f32>);
+
 
 pub trait Collection<T>
 where 
@@ -47,7 +115,7 @@ where
     where
         C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>
     {
-        fft::fft_ct::<Self, C, F>(self)
+        fft::ct::fft::<Self, C, F>(self)
     }
 }
 
@@ -61,40 +129,6 @@ where
     usize: AsPrimitive<F>
 {}
 
-
-//mpl<'a, F> CollectionRef<'a, F> for &'a Vec<F>
-//here
-//   F: Float + FloatConst + NumAssign + 'static,
-//}
-
-//pub trait FloatCollection<F: Float + FloatConst + NumAssign + 'static>
-//where
-//    Self: IntoIterator<Item = F, IntoIter = <Self as FloatCollection<F>>::IntoIter>,
-//    //<Self as IntoIterator>::IntoIter: ExactSizeIterator,
-//    Self: FromIterator<F> + Clone,
-//    for<'a> &'a Self: IntoIterator<Item = &'a F, IntoIter = <Self as FloatCollection<F>>::IntoIter>,
-//    for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
-//{
-//    type IntoIter: ExactSizeIterator;
-//    fn len(&self) -> usize {
-//        self.into_iter().len()
-//    }
-//
-//    fn float_collection_type(&self) {
-//        println!("I implement the trait");
-//    }
-//}
-//
-//impl<C, F> FloatCollection<F> for C
-//where 
-//    F: Float + FloatConst + NumAssign + 'static,
-//    C: IntoIterator<Item = F> + FromIterator<F> + Clone,
-//    <C as IntoIterator>::IntoIter: ExactSizeIterator,
-//    for<'a> &'a C: IntoIterator<Item = &'a F>,
-//    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator,
-//{
-//    type IntoIter = <C as IntoIterator>::IntoIter;
-//}
 
 pub trait TyEq
 where
@@ -114,20 +148,4 @@ pub trait HasInnerFloat {
 
 impl<T:'static + Float + FloatConst + NumAssign> HasInnerFloat for Complex<T> {
     type InnerFloat = T;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_float_collection_trait() {
-        let float_vec = vec![0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0];
-        let float_vec_ref = &float_vec;
-        //float_vec.print();
-        //float_vec_ref.print();
-
-        //float_vec.float_collection_type();
-        //let boxed = Box::new(float_vec);
-    }
 }
