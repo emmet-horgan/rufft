@@ -13,11 +13,14 @@ serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 walkdir = "2"
 itertools = "0.13.0"
+ndarray = { version = "0.16.1", optional = true }
 
 [dev-dependencies]
 ndarray = "0.16.1"
 plotters = "0.3.7"
 smallvec = "1.13.2"
 
-# [profile.dev]
-# rustflags = ["-A", "non_snake_case", "-A", "dead_code", "-A", "unused_imports", "-A", "unused_variables"]
+[features]
+default = ["ndarray"]
+ndarray = ["dep:ndarray"]
+

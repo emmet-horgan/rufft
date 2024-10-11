@@ -3,11 +3,12 @@ use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use std::ops::IndexMut;
 use super::ct;
 use crate::itertools::complex::zero_pad;
+use crate::traits::Iterable;
 
 fn chirp_complex<F, I>(n: usize) -> I
 where 
     F: Float + FloatConst + NumAssign + 'static,
-    I: FromIterator<Complex<F>> + Clone,
+    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     usize: AsPrimitive<F>
 {
     (0..n).map(|i| {
@@ -19,7 +20,7 @@ where
 fn inverse_chirp_complex<I, F>(n: usize) -> I
 where 
     F: Float + FloatConst + NumAssign + 'static,
-    I: FromIterator<Complex<F>> + Clone,
+    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     usize: AsPrimitive<F>
 {
     (0..n).map(|i| {
@@ -30,49 +31,44 @@ where
 
 pub fn fft<F, I, C>(x: &I) -> C
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static + std::fmt::Debug,
-    // Bound I to to an iterable collection of F
-    I: FromIterator<F> + Clone,
-    for<'a> &'a I: IntoIterator<Item = &'a F>,
-    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
-    // Ensure a usize can be converted to F, ideally this can be removed
+    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    for<'c><C as Iterable>::Iterator<'c>: DoubleEndedIterator,
+    C: IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
-    // Bound C to a collection of Complex<F>
-    C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>> + Clone,
-    for<'a> &'a C: IntoIterator<Item = &'a Complex<F>>,
-    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator + DoubleEndedIterator,
+    
 {
-    let n = x.into_iter().len();
+    let n = x.len();
     let m = (2 * n) -1;
     let fft_len = m.next_power_of_two(); // Just use cooley-tukey for now
     let zero_pad_len = fft_len - m + n;
 
     let a: C = inverse_chirp_complex::<C, F>(n)
-        .into_iter()
-        .zip(x.into_iter())
+        .iter()
+        .zip(x.iter())
         .map(|(c, v)| c * v)
         .collect();
     let b: C = chirp_complex(n);
-    let reflection: C = b.into_iter().skip(1).take(n - 1).rev().cloned().collect();
+    let reflection: C = b.iter().skip(1).take(n - 1).rev().cloned().collect();
 
     let a = zero_pad(fft_len, &a).expect("Internal padding error which should be impossible !");
     let b = zero_pad(zero_pad_len, &b).expect("Internal padding error which should be impossible !");
 
-    let b: C = b.into_iter().chain(reflection.into_iter()).cloned().collect();
+    let b: C = b.iter().chain(reflection.iter()).cloned().collect();
 
     let afft = ct::complex::fft(&a);
     let bfft = ct::complex::fft(&b);
     let convolution: C = afft
-        .into_iter()
-        .zip(bfft.into_iter())
+        .iter()
+        .zip(bfft.iter())
         .map(|(a, b)| a * b)
         .collect();
 
     let tmp: C = ct::complex::ifft(&convolution);
     let product: C = inverse_chirp_complex(n);
-    tmp.into_iter()
-        .zip(product.into_iter())
+    tmp.iter()
+        .zip(product.iter())
         .map(|(a, b)| a * b)
         .collect()  
 }

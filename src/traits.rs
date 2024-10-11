@@ -1,53 +1,90 @@
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
-use std::ops::IndexMut;
+use std::{ops::IndexMut, ops::Deref, slice::Iter};
 use crate::fft;
 
-pub trait Collection<T>
+pub trait Iterable: FromIterator<Self::OwnedItem>
 where 
-    Self: IntoIterator<Item = T> + FromIterator<T> + Clone,
-    <Self as IntoIterator>::IntoIter: ExactSizeIterator,
-    for<'a> &'a Self: CollectionRef<'a, T>,
-    // Compiles if the below is included
-    //for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
-{}
+    for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
+    for<'c> Self: 'c,
+    Self: Clone,
+{
+    type OwnedItem;
+    type Item<'collection>
+    where
+        Self: 'collection;
 
-pub trait CollectionRef<'a, T>
+    type Iterator<'collection>: ExactSizeIterator<Item = Self::Item<'collection>>
+    where
+        Self: 'collection;
+        //Self: DoubleEndedIterator<Item = Self::Item<'collection>>;
+
+    fn iter<'c>(&'c self) -> Self::Iterator<'c>;
+
+    fn len(&self) -> usize {
+        self.iter().len()
+    }
+}
+
+impl<T> Iterable for Vec<T>
 where 
-    T: 'a,
-    Self: IntoIterator<Item = &'a T> + Clone,
-    <Self as IntoIterator>::IntoIter: ExactSizeIterator,
-{}
+    for<'c> T: 'c,
+    T: Clone,
+{
+    type Item<'c> = &'c T
+    where
+        T: 'c;
+    type OwnedItem = T;
 
-impl<C, F> Collection<F> for C 
-where
-    F: Float + FloatConst + NumAssign + 'static,
-    C: IntoIterator<Item = F> + FromIterator<F> + Clone,
-    <C as IntoIterator>::IntoIter: ExactSizeIterator,
-    for<'a> &'a C: CollectionRef<'a, F>,
-    //for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
-{}
+    type Iterator<'c> = Iter<'c, T>
+    where
+        T: 'c;
+    
+    fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+        self.as_slice().iter()
+    }
 
-impl<'a, C, F> CollectionRef<'a, F> for &'a C 
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+
+#[cfg(feature = "ndarray")]
+impl<T> Iterable for ndarray::Array1<T>
 where
-    F: Float + FloatConst + NumAssign + 'static,
-    &'a C: IntoIterator<Item = &'a F> + Clone,
-    <&'a C as IntoIterator>::IntoIter: ExactSizeIterator
-{}
+    for<'c> T: 'c,
+    T: Clone,
+{
+    type Item<'c> = &'c T
+    where
+        T: 'c;
+    type OwnedItem = T;
+    type Iterator<'c> = ndarray::iter::Iter<'c, T, ndarray::Ix1>
+    where
+        T: 'c;
+
+    fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+        self.iter()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
 
 pub trait Fft<F: Float + FloatConst + NumAssign + 'static>
 where 
-    Self: FromIterator<F> + Clone,
-    for<'a> &'a Self: IntoIterator<Item = &'a F>,
-    for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    for<'c> Self: 'c,
     usize: AsPrimitive<F>,
 {   
     fn fft_ct<C>(&self) -> C
     where
-        C: FromIterator<Complex<F>> + 
-            IndexMut<usize, Output = Complex<F>> + 
-            IntoIterator<Item = Complex<F>> + 
-            Clone
+        for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+        for<'c> C: 'c,
+        C: IndexMut<usize, Output = Complex<F>>,
     {
         fft::ct::fft::<F, Self, C>(self)
     }
@@ -57,10 +94,8 @@ where
 
 impl<C, F> Fft<F> for C
 where 
-    Self: IntoIterator<Item = F> + FromIterator<F> + Clone,
-    <Self as IntoIterator>::IntoIter: ExactSizeIterator,
-    for<'a> &'a Self: IntoIterator<Item = &'a F>,
-    for<'a> <&'a Self as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    for<'c> C: 'c,
     F: Float + FloatConst + NumAssign + 'static,
     usize: AsPrimitive<F>
 {}

@@ -2,39 +2,39 @@ use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use std::ops::IndexMut;
 use itertools::izip;
+use crate::traits::Iterable;
 
 pub fn fft<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
     // Bound I to to an iterable collection of F
-    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
-    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
-    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: IndexMut<usize, Output = Complex<F>>,
     // Ensure a usize can be converted to F, ideally this can be removed
     usize: AsPrimitive<F>,
 {
-    let n = x.into_iter().len();
+    let n = x.len();
     let n_f: F = n.as_();
     let zero = Complex::new(F::zero(), F::zero());
     let one_real = Complex::new(F::one(), F::zero());
     let twopi_complex = Complex::new(F::zero(), F::TAU());
 
     if n == 1 {
-        x.into_iter().cloned().collect()
+        x.iter().cloned().collect()
     } else {
         let wn = -twopi_complex / n_f;
         let wn = wn.exp();
         let mut w = one_real;
 
-        let x_even: I = x.into_iter().step_by(2).cloned().collect();
-        let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
+        let x_even: I = x.iter().step_by(2).cloned().collect();
+        let x_odd: I = x.iter().skip(1).step_by(2).cloned().collect();
 
         let y_even: I = fft(&x_even);
         let y_odd: I = fft(&x_odd);
         let mut y = I::from_iter(std::iter::repeat(zero).take(n));
         
-        izip!(y_even.into_iter(), y_odd.into_iter())
+        izip!(y_even.iter(), y_odd.iter())
             .enumerate()
             .for_each(|(j, (even, odd))| {
                 let tmp = w * odd;
@@ -50,33 +50,35 @@ pub(crate) fn ifft_internal<F, I>(x: &I) -> I
 where
     // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
+    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: IndexMut<usize, Output = Complex<F>>,
     // Bound I to an iterable collection of F
-    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
-    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
-    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    //I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
+    //for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
+    //for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
     // Ensure a usize can be converted to F
     usize: AsPrimitive<F>,
 {
-    let n = x.into_iter().len();
+    let n = x.len();
     let zero = F::zero();
     let one = F::one();
     let twopi = F::TAU();
 
     if n == 1 {
-        x.into_iter().cloned().collect()
+        x.iter().cloned().collect()
     } else {
         let wn = Complex::new(zero, twopi / (n.as_()));
         let wn = wn.exp();
         let mut w = Complex::new(one, zero);
 
-        let x_even: I = x.into_iter().step_by(2).cloned().collect();
-        let x_odd: I = x.into_iter().skip(1).step_by(2).cloned().collect();
+        let x_even: I = x.iter().step_by(2).cloned().collect();
+        let x_odd: I = x.iter().skip(1).step_by(2).cloned().collect();
 
         let y_even: I = ifft_internal(&x_even);
         let y_odd: I = ifft_internal(&x_odd);
         let mut y = I::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(n));
 
-        izip!(y_even.into_iter(), y_odd.into_iter())
+        izip!(y_even.iter(), y_odd.iter())
             .enumerate()
             .for_each(|(j, (even, odd))| {
                 let tmp = w * odd;
@@ -90,20 +92,14 @@ where
 
 pub fn ifft<F, I, C>(x: &I) -> C
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to an iterable collection of F
-    I: FromIterator<Complex<F>> + Clone + IndexMut<usize, Output = Complex<F>>,
-    for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
-    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
-    // Ensure a usize can be converted to F
+    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
-    // Bound C to a collection of Complex<F>
-    C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
 {   
-    let n: F = x.into_iter().len().as_();
-    let tmp: I = ifft_internal(x);
-    tmp.into_iter().map(|x| x / n).collect()
+    let n: F = x.len().as_();
+    ifft_internal(x).iter().map(|x| x / n).collect()
 }
 
 #[cfg(test)]

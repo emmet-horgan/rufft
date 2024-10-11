@@ -1,48 +1,102 @@
 use num_traits::{ AsPrimitive, Float, FloatConst, NumAssign };
+use crate::traits::Iterable;
 
-//macro_rules! impl_traits {
-//    ($name:ty, $samples:ident) => {
-//        impl<F, C> FromIterator<$F> for $name<F, C>
-//        where 
-//            for<'c> &'c C: IntoIterator<Item = &'c F>,
-//            for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator,
-//            F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
-//            usize: AsPrimitive<F>
-//        {
-//            fn from_iter<I: IntoIterator<Item = F>>(iter: I) -> Self {
-//                Self {
-//                    $samples: iter.into_iter().collect(),
-//                }
-//            }
-//        }
-//
-//        impl
-//    };
-//}
+macro_rules! impl_traits {
+    ($($name:ident),*) => {
+        $(
+            impl <F, C> FromIterator<F> for $name<F, C>
+            where 
+                for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+                F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+                usize: AsPrimitive<F>
+            {
+                fn from_iter<I: IntoIterator<Item = F>>(iter: I) -> Self {
+                    Self (
+                        iter.into_iter().collect()
+                    )
+                }
 
-pub struct Sine<F, C>
+            }
+
+            impl<F, C> Iterable for $name<F, C>
+            where 
+                for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+                F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+                usize: AsPrimitive<F>
+            {
+                type OwnedItem = F;
+                type Item<'c> = &'c F;
+                type Iterator<'c> = <C as Iterable>::Iterator<'c>;
+            
+                fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+                    self.0.iter()
+                }
+            }
+        )*
+    };
+}
+
+pub struct SineIterator<F> 
 where 
-    for<'c> &'c C: IntoIterator<Item = &'c F>,
-    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator,
     F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
     usize: AsPrimitive<F>
 {
-    pub samples: C,
+    fs: F,
+    f: F,
+    offset: F,
+    i: usize
 }
+
+impl<F> SineIterator<F>
+where
+    F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+    usize: AsPrimitive<F>
+{
+    pub fn from_frequency_with_offset(fs: F, f: F, offset: F) -> Self{
+        Self {
+            fs,
+            f,
+            offset,
+            i: 0
+        }
+    }
+    pub fn from_frequency(fs: F, f: F) -> Self {
+        Self::from_frequency_with_offset(fs, f, F::zero())
+    }
+}
+
+impl<F> Iterator for SineIterator<F>
+where
+    F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+    usize: AsPrimitive<F>
+{
+    type Item = F;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let t = self.i.as_() / self.fs;
+        self.i += 1;
+        Some(((F::TAU() * self.f * t) + self.offset).sin())
+    }
+}
+
+#[derive(Clone)]
+pub struct Sine<F, C>(C)
+where 
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+    usize: AsPrimitive<F>;
+
 
 impl<F, C> Sine<F, C>
 where 
-    C: FromIterator<F> + Clone,
-    for<'c> &'c C: IntoIterator<Item = &'c F>,
-    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator,
-    F: Float + FloatConst + NumAssign + 'static,
-    F: AsPrimitive<usize>,
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
     usize: AsPrimitive<F>
 {
     pub fn from_samples(samples: C) -> Self {
-        Self {
+        Self (
             samples,
-        }
+        )
     }
 
     pub fn from_duration(fs: F, f: F, duration: F) -> Self {
@@ -50,44 +104,37 @@ where
     }
 
     pub fn from_duration_with_offset(fs: F, f: F, duration: F, offset: F) -> Self {
-        let n: usize = (duration * fs).floor().as_();
-        Self {
-            samples: (0..n).map(|i| {
-                let t = i.as_() / fs;
-                ((F::TAU() * f * t) + offset).sin()
-            }).collect()
-        }
+        let iter = SineIterator::from_frequency_with_offset(fs, f, offset);
+        Self (
+            iter.take((duration * fs).floor().as_()).collect()
+        )
     }
 }
 
-pub struct Sinc<F, C>
+#[derive(Clone)]
+pub struct Sinc<F, C>(C)
 where 
-    for<'c> &'c C: IntoIterator<Item = &'c F>,
-    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator,
-    F: Float + FloatConst + NumAssign + 'static
-{
-    pub samples: C,
-}
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+    usize: AsPrimitive<F>;
+
 
 impl<F, C> Sinc<F, C>
 where 
-    C: FromIterator<F> + Clone,
-    for<'c> &'c C: IntoIterator<Item = &'c F>,
-    for<'a> <&'a C as IntoIterator>::IntoIter: ExactSizeIterator,
-    F: Float + FloatConst + NumAssign + 'static,
-    F: AsPrimitive<usize>,
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
     usize: AsPrimitive<F>
 {
     pub fn from_samples(samples: C) -> Self {
-        Self {
+        Self (
             samples,
-        }
+        )
     }
 
     pub fn from_duration(fs: F, f: F, duration: F) -> Self {
         let n: usize = (duration * fs).floor().as_();
-        Self {
-            samples: (0..n).map(|i| {
+        Self (
+            (0..n).map(|i| {
                 let t = i.as_() / fs;
                 let phase = F::TAU() * f * t;
                 if phase == F::zero() {
@@ -96,7 +143,7 @@ where
                     phase.sin() / phase
                 }
             }).collect()
-        }
+        )
     }
 }
 
@@ -121,21 +168,46 @@ pub fn multi_tone() {
     std::unimplemented!();
 }
 
+impl_traits!(Sine, Sinc);
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use plotters::prelude::*;
+    use ndarray::prelude::*;
+
+    #[test]
+    fn test_collectable() {
+        let samples = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let sine: Sine<f64, Vec<_>> = samples.iter().cloned().collect();
+        for (s, sine) in samples.iter().zip(sine.iter()) {
+            println!("{} == {}", s, sine);
+            assert_eq!(s, sine);
+        }
+    }
+
+    #[test]
+    fn test_iterable() {
+        let samples = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let sine: Sine<f64, Vec<_>> = Sine::from_samples(samples.clone());
+
+        for (s, sine) in samples.iter().zip(sine.iter()) {
+            println!("{} == {}", s, sine);
+            assert_eq!(s, sine);
+        }
+    }
 
     #[test]
     fn test_plotting() {
-        let duration = 1000.0;
-        let fs = 1000.0;
+        let duration = 2.0;
+        let fs = 1024.0;
         let n = (duration * fs) as usize;
-        let f = 1.0;
+        let f = 5.0;
 
         let time: Vec<_> = (0..n).map(|i| i as f64 / fs).collect();
-        let waveform = Sinc::<f64, Vec<_>>::from_duration(fs, f, duration);
-
+        let waveform = Sine::<f64, Array1<_>>::from_duration(fs, f, duration);
+        let fft: Vec<_> = crate::fft::ct::fft::<_, _, Vec<_>>(&waveform).iter().map(|&x| x.norm()).collect();
+        let freqs: Vec<_> = crate::fft::fftfreq_balanced(n, 1.0 / fs);
         // Create a drawing area (800x600 pixels)
         let drawing_area = BitMapBackend::new("plot.png", (800, 600)).into_drawing_area();
         drawing_area.fill(&WHITE).unwrap();
@@ -153,7 +225,7 @@ mod tests {
         // Plot the data
         chart
             .draw_series(LineSeries::new(
-                time.iter().zip(waveform.samples.iter()).map(|(&x, &y)| (x, y)),
+                freqs.iter().zip(fft.iter()).map(|(&x, &y)| (x, y)),
                 &RED,
             )).unwrap()
             .label("sin(2t)")
