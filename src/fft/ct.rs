@@ -7,11 +7,9 @@ use crate::traits::Iterable;
 
 pub fn fft<F, I, C>(x: &I) -> C
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
     for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
     for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    //for<'c> I: 'c, for<'c> C: 'c,
     C: IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
 {
@@ -52,13 +50,10 @@ where
 
 pub fn ifft<F, I, C>(x: &I) -> C
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to an iterable collection of F
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
     I: IndexMut<usize, Output = Complex<F>>,
-    // Ensure a usize can be converted to F
     usize: AsPrimitive<F>,
 {   
     let n = x.len();

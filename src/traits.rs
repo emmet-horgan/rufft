@@ -1,6 +1,6 @@
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
-use std::{ops::IndexMut, ops::Deref, slice::Iter};
+use std::{ ops::IndexMut, ops::Deref };
 use crate::fft;
 
 pub trait Iterable: FromIterator<Self::OwnedItem>
@@ -15,9 +15,9 @@ where
         Self: 'collection;
 
     type Iterator<'collection>: ExactSizeIterator<Item = Self::Item<'collection>>
+        + DoubleEndedIterator<Item = Self::Item<'collection>>
     where
         Self: 'collection;
-        //Self: DoubleEndedIterator<Item = Self::Item<'collection>>;
 
     fn iter<'c>(&'c self) -> Self::Iterator<'c>;
 
@@ -36,7 +36,7 @@ where
         T: 'c;
     type OwnedItem = T;
 
-    type Iterator<'c> = Iter<'c, T>
+    type Iterator<'c> = std::slice::Iter<'c, T>
     where
         T: 'c;
     
