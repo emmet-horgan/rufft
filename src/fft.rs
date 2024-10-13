@@ -1,468 +1,174 @@
-#![allow(non_snake_case)]
-use ndarray::prelude::*;
-use num::Zero;
+pub mod ct;
+pub mod czt;
+pub mod complex;
+use num::Integer;
 use num_complex::Complex;
-use crate::traits::{FloatVal, SigVal};
-use num_traits::Num;
-use num_traits::cast::AsPrimitive;
-use std::ops::DivAssign;
-use std::iter::{ExactSizeIterator, Iterator};
+use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps };
+use std::ops::IndexMut;
+use crate::traits::Iterable;
 
-struct DftIter<I, T>
+pub fn dtft<F, I, C>(x: I) -> impl Fn(I) -> C
+where 
+    F: Float + FloatConst + NumAssign + 'static,
+    I: FromIterator<F> + Clone,
+    for<'a> &'a I: IntoIterator<Item = &'a F>,
+    for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
+    usize: AsPrimitive<F>,
+    C: FromIterator<Complex<F>> + IndexMut<usize, Output = Complex<F>>,
+{
+    move |samples: I| -> C {
+        samples.into_iter().map(|&w|{
+            x.into_iter().enumerate().map(|(i, &f)| {
+                let phase = Complex::<F>::new(F::zero(), -i.as_() * w);
+                Complex::<F>::new(f, F::zero()) * phase.exp()
+            }).sum()
+        }).collect()
+    }
+}
+
+
+pub fn idft<F, I, C>(x: &I) -> C
 where
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal
+    F: Float + FloatConst + NumAssign + 'static,
+    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    usize: AsPrimitive<F>,
 {
-    iter: I,
-    cur: usize,
-    length: usize,
-    _marker: std::marker::PhantomData<T>
+    complex::idft_internal(x).iter().map(|x| x.re).collect()
 }
 
-impl<I, T> DftIter<I, T> 
-where 
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal
-{
-    fn new(iter: I) -> Self {
-        let length = (&iter.into_iter()).len();
-        DftIter {
-            iter,
-            cur: 0,
-            length: length,
-            _marker: std::marker::PhantomData
-        }
-    }
-}
-
-impl<I, T> Iterator for DftIter<I, T>
+pub fn dft<F, I, C>(x: &I) -> C
 where
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>
+    F: Float + FloatConst + NumAssign + 'static,
+    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    usize: AsPrimitive<F>,
 {
-    type Item = Complex<T>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.cur == self.length - 1 {
-            return None;
-        }
-
-        let mut sum = Complex::<T>::zero();
-        let N = self.length;
-        let N_t: T = N.as_();
-        let twopi: T = (2).as_() * T::PI();
-        let zero = T::zero();
-        let k = self.cur;
-        let mut n: usize = 0;
-        for x in self.iter.into_iter() {
-            let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n.as_() * k.as_()) / N_t);
-            sum += Complex::<T>::new(x.as_(), zero) * phase.exp();
-            n += 1
-        }
-        self.cur += 1;
-        Some(sum)
-    }
+    let n = x.len();
+    let zero = F::zero();
+    let twopi = F::TAU();
+    x.iter().enumerate().map(|(i, _)|{ // Change to a range of some kind
+        x.iter().enumerate().map(|(j, f)| {
+            let phase = Complex::<F>::new(zero, -(twopi * j.as_() * i.as_()) / n.as_());
+            Complex::<F>::new(*f, zero) * phase.exp()
+        }).sum()
+    }).collect()
 }
 
-impl<I, T> ExactSizeIterator for DftIter<I, T>
+pub fn fftfreq<F, I>(n: usize, d: F) -> I
 where
-    I: IntoIterator,
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>,
+    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
 {
-    fn len(&self) -> usize {
-        self.length
-    }
+    let time = d * n.as_();
+    (0..n).map(|i| i.as_() / time).collect()
 }
 
-pub fn dft_func<T: FloatVal, I: IntoIterator>(x: I) -> DftIter<I, T>
+pub fn fftfreq_balanced<F, I>(n: usize, d: F) -> I 
 where
-    I::IntoIter: ExactSizeIterator,
-    I::Item: SigVal<T>,
-    usize: AsPrimitive<T>
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>,
+    i32: AsPrimitive<F>,
+    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
 {
-    DftIter::new(x)
-}
-
-pub fn dft<U, T>(x: &Array1<U>) -> Array1<Complex<T>>
-where
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>
-{
-
-    let N = x.len();
-    let N_t: T = N.as_();
-    let twopi: T = (2).as_() * T::PI();
-    let zero: T = T::zero();
-    
-    let mut out = Array1::<Complex<T>>::zeros(N); // preallocate memory
-
-    for k in 0..N {
-        let mut sum: Complex<T> = Complex::<T>::new(zero, zero);
-        let k_t: T = k.as_();
-        for n in 0..N {
-            let n_t: T = n.as_();
-            let phase: Complex<T> = Complex::<T>::new(zero, -(twopi * n_t * k_t) / N_t);
-            let arg: Complex<T> = Complex::<T>::new(x[n].as_(), zero) * phase.exp();
-            
-            sum += arg;
-        }
-        out[k] = sum;
-    }
-    
-    out
-}
-
-pub fn fftfreq<U, T>(n: usize, p: U) -> Array1<T> 
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-    Array1<T>: DivAssign<T>
-{
-    let zero = T::zero();
-    let one = T::one();
-    let two = T::one() + T::one();
-    let n_t: T = n.as_();
-    
-    let part0 :Array1<T>;
-    let part1 :Array1<T>;
-    if n % 2 == 0 {
-        part0  = Array1::<T>::range(zero, n_t / two, one);
-        part1  = Array1::<T>::range(-n_t / two, -zero, one);
-        
-    }
-    else {
-        part0 = Array1::<T>::range(zero, (n_t - one) / two, one);
-        part1 = Array1::<T>::range(-(n_t - one) / two, -zero, one);
-    }
-
-    let mut arr = ndarray::concatenate![Axis(0), part0, part1];
-    
-    arr /= p.as_() * n_t;
-    return arr;
-}
-
-pub fn dtft<U, T>(x: Array1<U>) -> impl Fn(Array1<T>) -> Array1<Complex<T>>
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-{
-    move |samples: Array1<T>| -> Array1<Complex<T>> {
-        let zero = T::zero();
-        let mut y: Array1<Complex<T>> = Array1::<Complex<T>>::zeros(samples.len());
-
-        for (index, &w) in samples.iter().enumerate() {
-            let mut sum: Complex<T> = Complex::<T>::new(zero, zero);
-            for n in 0..x.len() {
-                let n_t: T = n.as_();
-                let phase: Complex<T> = Complex::<T>::new(zero, -n_t * w);
-                
-                let arg: Complex<T> = Complex::<T>::new(x[n].as_(), zero) * phase.exp();
-                
-                sum += arg;
-            }
-            y[index] = sum;
-        }
-        y
-    }
-}
-
-pub fn fft_ct<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-{
-    let N = x.len();
-    let N_t: T = N.as_();
-    let zero = T::zero();
-    let one = T::one();
-    let twopi: T = (2).as_() * T::PI();
-
-    if N == 1 {
-        array![Complex::<T>::new(x[0].as_(), zero)]
-    }
-    else {
-        let wn = Complex::<T>::new(zero, -twopi / N_t);
-        let wn = wn.exp();
-        let mut w = Complex::<T>::new(one, zero);
-
-        let x_even: Array1<U> = x.slice(s![0..;2]).to_owned();
-        let x_odd: Array1<U> = x.slice(s![1..;2]).to_owned();
-        
-        let y_even = fft_ct(&x_even);
-        let y_odd = fft_ct(&x_odd);
-
-        let mut y = Array1::<Complex<T>>::zeros(N); // preallocate memory
-        for j in 0..(N/2) {
-            let tmp = w * y_odd[j];
-            y[j] = y_even[j] + tmp;
-            y[j + N/2] = y_even[j] - tmp; 
-            w *= wn;
-        }
-        y
-    }
-}
-
-pub fn fft_pf<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-{
-    std::unimplemented!();
-}
-
-pub fn czt<U, T>(x: &Array1<U>) -> Array1<Complex<T>> 
-where 
-    U: SigVal<T>,
-    T: FloatVal,
-    usize: AsPrimitive<T>,
-{
-    std::unimplemented!();
-}
-
-pub fn ifft_ct<T: FloatVal>(x: &Array1<Complex<T>>) -> Array1<T> 
-{
-    std::unimplemented!();
-}
-
-//pub fn pad<T: Num + Copy>(x: &Array1<T>, val: T, len: usize) -> Result<Array1<T>, ndarray::ShapeError> {
-//    //let _: Array1<T> = x.iter().map(|x| x).into()
-//    //let tmp = x.clone();
-//    x.clone().into_shape((1, len))
-//}
-
-pub fn zero_pad<T: Num + Copy>(x: &Array1<T>) -> Option<Array1<T>> 
-{
-    let zero = T::zero();
-    let N = x.len();
-
-    // Add a check for N = 2^{m}, zero pad if not. Only executed once regardsless of recursion.
-    if (N != 0) && (N & (N - 1)) != 0 {
-        let mut power = 1;
-        while power < N {
-            power <<= 1;
-        }
-        let mut y = Array1::<T>::zeros(power);
-        for i in 0..N {
-            y[i] = x[i];
-        }
-        for i in N..power {
-            y[i] = zero;
-        }
-        return Some(y);
-    }
-    else {
-        return None;
-    }
-} 
-
-#[macro_export]
-macro_rules! fft {
-    ($x:expr) => {
-        match fft::zero_pad(&$x) {
-            None => {
-                fft::fft_ct(&$x)
-            },
-            Some(x) => {
-                fft::dft::<f64 ,f64>(&$x)
-            }
-        }
+    let time = d * n.as_();
+    let (pos_end, neg_start) = if n.is_even() {
+        ((n as i32 / 2) -1 , -(n as i32 / 2))
+    } else {
+        ((n as i32 - 1) / 2, -(n as i32 - 1) / 2)
     };
+    let pos_iter = 0..=pos_end;
+    let neg_iter = neg_start..=-1;
 
-    ($x:expr, $cfg:expr) => {
-        match fft::zero_pad(&$x) {
-            None => {
-                fft::fft_ct(&$x)
-            },
-            Some(x) => {
-                let tmp = fft::fft_ct(&x);
-                tmp.slice(s![..$x.len()]).to_owned() // Maybe remove this line ?
-            }
-        }
-        
+    pos_iter.chain(neg_iter).map(|i| i.as_() / time).collect()
+}
+
+
+/// Wraps an angle in radians to the range (-π, π].
+fn wrap_phase<F: Float + FloatConst + NumAssignOps>(angle: F) -> F {
+    if angle >= F::PI() {
+        angle - F::TAU()
+    } else if angle <= -F::PI() {
+        angle + F::TAU()
+    } else {
+        angle
     }
-}
-
-#[macro_export]
-macro_rules! ifft {
-    ($x:expr) => {
-        std::unimplemented!();
-    };
-}
-
-#[macro_export]
-macro_rules! fftfreq {
-    ($x:expr, $t:expr) => {
-        match fft::zero_pad(&$x) {
-            None => {
-                fft::fftfreq($x.len(), $t)
-            }
-            Some(x) => {
-                fft::fftfreq(x.len(), $t) // Not sure if this is correct
-            }
-        }
-    };
 }
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused_imports)]
-    #[allow(dead_code)]
-    #[allow(unused_variables)]
-
-    use crate::fft;
-    use crate::io;
+    
+    use super::*;
+    use crate::io::{read_json, Data, Json};
+    use crate::test_utils::{ self as test, test_dft, test_idft };
     use ndarray::prelude::*;
-    use num_complex::Complex;
+
+    const ATOL_F64: f64 = 1e-12;
+    const RTOL_F64: f64 = 1e-9;
+
+    // Really loose tolerances for f32 because we're checking complex numbers
+    // which is more difficult, especially near zero where the phase can suddenly
+    // jump by π for a small change in the real or imaginary part. Precision errors
+    // for FFT algorithms can also accumulate. These values were found by trial-and-error.
+    const ATOL_F32: f32 = 1e-1;
+    const RTOL_F32: f32 = 1e-1;
+
+    
 
     #[test]
-    fn dft_sine() {
-        let json_data = io::read_json("datasets/fft/fft/fft.json");
-        let output: Array1<Complex<f64>>;
-        let epsilon = 1E-10;
-        let mut max_mag_error: f64 = 0.0;
-        let mut max_phase_error: f64 = 0.0;
-        match json_data.input_data {
-            io::Data::<f64>::Array(input) => {
-                let input: Array1<f64> = Array1::from_vec(input);
-                output = fft!(&input);
-            }
-            _ => {panic!()}
+    fn test_dft_vec_f32() {
+        test_dft!(f32, Vec<f32>, Vec<Complex<f32>>, RTOL_F32, ATOL_F32);
+    }
+
+    #[test]
+    fn test_dft_vec_f64() {
+        test_dft!(f64, Vec<f64>, Vec<Complex<f64>>, RTOL_F64, ATOL_F64);
+    }
+
+    #[test]
+    fn test_dft_arr_f64() {
+        test_dft!(f64, Array1<f64>, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
+    }
+
+    #[test]
+    fn test_dft_mix1_method_f64() {
+        test_dft!(f64, Vec<f64>, Array1<Complex<f64>>, RTOL_F64, ATOL_F64);
+    }
+
+    #[test]
+    fn test_idft_vec_f32() {
+        test_idft!(f32, Vec<Complex<f32>>, Vec<f32>, RTOL_F32, ATOL_F32);
+    }
+
+    #[test]
+    fn test_idft_vec_f64() {
+        test_idft!(f64, Vec<Complex<f64>>, Vec<f64>, RTOL_F64, ATOL_F64);
+    }
+
+    #[test]
+    fn test_idft_arr_f64() {
+        test_idft!(f64, Array1<Complex<f64>>, Array1<f64>, RTOL_F64, ATOL_F64);
+    }
+
+   #[test]
+    fn test_fftfreq_balanced() {
+        let json_data: Json<f64> = read_json("datasets/fft/fftfreq/fftfreq.json");
+        let (n, d) = match json_data.input_data {
+             Data::FftFreqVals { n, d } => (n, d),
+             _ => panic!("Read the input data incorrectly")
+        };
+        let scipy: Vec<f64> = match json_data.output_data {
+        Data::<f64>::Array(output) => output,
+        _ => panic!("Read the input data incorrectly")
+        };
+
+        let freqs: Vec<_> = fftfreq_balanced(n as usize, d);
+
+        for (&f1, &f2) in freqs.iter().zip(scipy.iter()) {
+            assert!(test::nearly_equal(f1, f2, RTOL_F64, ATOL_F64),
+                "{} != {}", f1, f2);
         }
-        match json_data.output_data {
-            io::Data::ComplexVals { mag, phase} => {
-                for i in 0..mag.len() {
-                    let mag_calc = output[i].norm();
-                    let phase_calc = output[i].arg();
-                    let percentage_mag: f64;
-                    let percentage_phase: f64;
-                    if (mag[i] == f64::from(0.0)) || (mag_calc == f64::from(0.0)) {
-                        percentage_mag = (mag[i] - mag_calc).abs();
-                    } 
-                    else {
-                        percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
-                    }
-                    if (phase[i] == f64::from(0.0)) || (phase_calc == f64::from(0.0)) {
-                        percentage_phase = (phase[i] - phase_calc).abs();
-                    } 
-                    else {
-                        percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
-                    }
-                    if percentage_mag > max_mag_error {
-                        max_mag_error = percentage_mag;
-                    }
-                    if percentage_phase > max_phase_error {
-                        max_phase_error = percentage_phase;
-                    }
-                    if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
-                    assert!(false)
-                    }
-                    assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
-                }
-                println!("Maximum % magnitude error: {}", max_mag_error);
-                println!("Maximum % phase error: {}", max_phase_error);
-            }
-            _ => {panic!()}
-        }
-    }
-
-    #[test]
-    fn dft_sine_func() {
-        let json_data = io::read_json("datasets/fft/fft/fft.json");
-        let mut output: Array1<Complex<f64>>;
-        let epsilon = 1E-10;
-        let mut max_mag_error: f64 = 0.0;
-        let mut max_phase_error: f64 = 0.0;
-        match json_data.input_data {
-            io::Data::<f64>::Array(input) => {
-                let input: Array1<f64> = Array1::from_vec(input);
-                //output = Array1::zeros();
-                let result = fft::dft_func(input.to_vec());
-                for x in result {
-                    println!("{}", x);
-                }
-            }
-            _ => {panic!()}
-        }
-        //match json_data.output_data {
-        //    io::Data::ComplexVals { mag, phase} => {
-        //        for i in 0..mag.len() {
-        //            let mag_calc = output[i].norm();
-        //            let phase_calc = output[i].arg();
-        //            let percentage_mag: f64;
-        //            let percentage_phase: f64;
-        //            if (mag[i] == f64::from(0.0)) || (mag_calc == f64::from(0.0)) {
-        //                percentage_mag = (mag[i] - mag_calc).abs();
-        //            } 
-        //            else {
-        //                percentage_mag = (mag[i] - mag_calc).abs() / mag[i];
-        //            }
-        //            if (phase[i] == f64::from(0.0)) || (phase_calc == f64::from(0.0)) {
-        //                percentage_phase = (phase[i] - phase_calc).abs();
-        //            } 
-        //            else {
-        //                percentage_phase = (phase[i] - phase_calc).abs() / phase[i];
-        //            }
-        //            if percentage_mag > max_mag_error {
-        //                max_mag_error = percentage_mag;
-        //            }
-        //            if percentage_phase > max_phase_error {
-        //                max_phase_error = percentage_phase;
-        //            }
-        //            if !((percentage_mag < epsilon) && (percentage_phase < epsilon)) {
-        //            assert!(false)
-        //            }
-        //            assert!((percentage_mag < epsilon) && (percentage_phase < epsilon));
-        //        }
-        //        println!("Maximum % magnitude error: {}", max_mag_error);
-        //        println!("Maximum % phase error: {}", max_phase_error);
-        //    }
-        //   _ => {panic!()}
-        //}
-    }
-
-    #[test]
-    fn dtft_sine() {
-        std::unimplemented!();
-    }
-
-    #[test]
-    fn fft_cooley_tukey_sine() {
-        std::unimplemented!();
-    }
-
-    #[test]
-    fn fftfreq() {
-        std::unimplemented!();
-    }
-
-    #[test]
-    fn zero_pad() {
-        std::unimplemented!();
-    }
-
-    #[test]
-    fn fft_macro() {
-        std::unimplemented!();
-    }
-
-    #[test]
-    fn fftfreq_macro() {
-        std::unimplemented!();
     }
 }
 

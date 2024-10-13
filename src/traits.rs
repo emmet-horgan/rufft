@@ -1,72 +1,102 @@
-use num_traits::{AsPrimitive, Num, NumAssignOps};
-use num_traits::float::{Float, FloatConst};
-use num::Complex;
-use std::iter::Iterator;
-use std::iter::ExactSizeIterator;
+use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
+use num_complex::Complex;
+use std::{ ops::IndexMut, ops::Deref };
+use crate::fft;
 
-pub trait Stats {
-    type Elements;
-
-    fn mean(&self) -> Self::Elements;
-    fn variance(&self) -> Self::Elements;
-    fn stdev(&self) -> Self::Elements;
-    fn skewness(&self) -> Self::Elements;
-    fn kurtosis(&self) -> Self::Elements;
-    fn histogram(&self);
-} 
-
-pub trait FloatVal: Num + NumAssignOps + Float + FloatConst + 'static {}
-
-pub trait SigVal<T: FloatVal>: Num + NumAssignOps + 'static 
+pub trait Iterable: FromIterator<Self::OwnedItem>
 where 
-    Self: AsPrimitive<T>
+    for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
+    for<'c> Self: 'c,
+    Self: Clone,
+{
+    type OwnedItem;
+    type Item<'collection>
+    where
+        Self: 'collection;
+
+    type Iterator<'collection>: ExactSizeIterator<Item = Self::Item<'collection>>
+        + DoubleEndedIterator<Item = Self::Item<'collection>>
+    where
+        Self: 'collection;
+
+    fn iter<'c>(&'c self) -> Self::Iterator<'c>;
+
+    fn len(&self) -> usize {
+        self.iter().len()
+    }
+}
+
+impl<T> Iterable for Vec<T>
+where 
+    for<'c> T: 'c,
+    T: Clone,
+{
+    type Item<'c> = &'c T
+    where
+        T: 'c;
+    type OwnedItem = T;
+
+    type Iterator<'c> = std::slice::Iter<'c, T>
+    where
+        T: 'c;
+    
+    fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+        self.as_slice().iter()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+#[cfg(feature = "ndarray")]
+impl<T> Iterable for ndarray::Array1<T>
+where
+    for<'c> T: 'c,
+    T: Clone,
+{
+    type Item<'c> = &'c T
+    where
+        T: 'c;
+    type OwnedItem = T;
+    type Iterator<'c> = ndarray::iter::Iter<'c, T, ndarray::Ix1>
+    where
+        T: 'c;
+
+    fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+        self.iter()
+    }
+
+    fn len(&self) -> usize {
+        self.len()
+    }
+}
+
+
+pub trait Fft<F: Float + FloatConst + NumAssign + 'static>
+where 
+    for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    usize: AsPrimitive<F>,
+{   
+    fn fft<C>(&self) -> C
+    where 
+        for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+        C: IndexMut<usize, Output = Complex<F>>,
+        usize: AsPrimitive<F>
+    {
+        let n = self.len();
+        if n.is_power_of_two() {
+            fft::ct::fft::<F, Self, C>(self)
+        } else {
+            fft::czt::fft::<F, Self, C>(self)
+        }
+    }
+}
+
+impl<C, F> Fft<F> for C
+where 
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    F: Float + FloatConst + NumAssign + 'static,
+    usize: AsPrimitive<F>
 {}
 
-//pub trait Signal<T: FloatVal, I: ExactSizeIterator>: ExactSizeIterator + SigVal<T>
-//where 
-//    I::Item: SigVal<T>
-//{}
-
-//pub trait Signal<T: FloatVal, I: Iterator>: SigVal<T>
-//where
-//    I::Item: SigVal<T>
-//{}
-
-//pub struct SignalIter<T: FloatVal, I> {
-//    marker: std::marker::PhantomData<T>,
-//    iter: I
-//}
-
-//impl<T, I> Iterator for SignalIter<T, I> 
-//where
-//    T: FloatVal,
-//    I: Iterator,
-//    I::Item: SigVal<T>,
-//{
-//    type Item = I::Item;
-//
-//    fn next(&mut self) -> Option<Self::Item> {
-//        self.iter.next()
-//    }
-//}
-//
-//impl<T, I> Signal for SignalIter<T, I>
-//where
-//    T: FloatVal,
-//    I: Iterator,
-//    I::Item: SigVal<T>,
-//{}
-//pub trait SignalIter<T: FloatVal, I>
-//where 
-//    I: Iterator,
-//    I::Item: SigVal<T>,
-//{}
-
-impl FloatVal for f64 {}
-impl FloatVal for f32 {}
-
-impl SigVal<f64> for f64 {}
-impl SigVal<f32> for f32 {}
-
-impl SigVal<f64> for i64 {}
-impl SigVal<f32> for i32 {}

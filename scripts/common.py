@@ -137,3 +137,11 @@ def gen_sine_data(f: float, fs: float, duration: float, phase_offset: float = 0.
     phase = 2 * np.pi * f * samples + phase_offset
 
     return np.sin(phase)  # Sine wave is most likely an input e.g. fft
+
+def gen_complex_exp_data(f: float, fs: float, duration: float, phase_offset: float = 0.0):
+
+    num_points = int(np.ceil(fs * duration))
+    samples = np.linspace(0, duration, num=num_points)
+    phase = 1j *2 * np.pi * f * samples + phase_offset
+
+    return np.exp(phase)  # Sine wave is most likely an input e.g. fft

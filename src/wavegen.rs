@@ -1,82 +1,39 @@
-use num_traits::float::Float;
-use ndarray::prelude::*;
-//use num_traits::cast::FromPrimitive;
+pub mod sine;
+pub mod sinc;
 
-pub fn sine<T>(f: T, fs: T, t: T) -> Array1<T>
-where T: Float
-{
-    let pi: T = T::from(std::f64::consts::PI).unwrap();
-    let len: usize = (t * fs).floor().to_usize().unwrap(); // Round down and cast to usize
-    let t_step = T::from(1.0).unwrap() / fs;
+macro_rules! impl_traits {
+    ($($name:ident),*) => {
+        $(
+            impl <F, C> FromIterator<F> for $name<F, C>
+            where 
+                for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+                F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+                usize: AsPrimitive<F>
+            {
+                fn from_iter<I: IntoIterator<Item = F>>(iter: I) -> Self {
+                    Self (
+                        iter.into_iter().collect()
+                    )
+                }
 
-    let mut signal: Array1<T> = Array1::zeros(len);
-    for i in 0..len {
-        let t: T = T::from(i).unwrap() * t_step;
-        signal[i] = (T::from(2.0).unwrap() * pi * fs * t).sin();
-    }
-    return signal;
+            }
+
+            impl<F, C> Iterable for $name<F, C>
+            where 
+                for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+                F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
+                usize: AsPrimitive<F>
+            {
+                type OwnedItem = F;
+                type Item<'c> = &'c F;
+                type Iterator<'c> = <C as Iterable>::Iterator<'c>;
+            
+                fn iter<'c>(&'c self) -> Self::Iterator<'c> {
+                    self.0.iter()
+                }
+            }
+        )*
+    };
 }
 
-pub fn sinc() {
-    std::unimplemented!();
-}
-
-pub fn triangular() {
-    std::unimplemented!();
-}
-
-pub fn square() {
-    std::unimplemented!();
-}
-
-pub fn sawtooth() {
-    std::unimplemented!();
-}
-
-pub fn pulse() {
-    std::unimplemented!();
-}
-
-pub fn multi_tone() {
-    std::unimplemented!();
-}
-
-#[cfg(test)]
-mod tests {
-
-    #[test]
-    fn sine() {
-        std::unimplemented!();
-    }
-    
-    #[test]
-    fn sinc() {
-        std::unimplemented!();
-    }
-    
-    #[test]
-    fn triangular() {
-        std::unimplemented!();
-    }
-    
-    #[test]
-    fn square() {
-        std::unimplemented!();
-    }
-    
-    #[test]
-    fn sawtooth() {
-        std::unimplemented!();
-    }
-    
-    #[test]
-    fn pulse() {
-        std::unimplemented!();
-    }
-
-    #[test]
-    fn multi_tone() {
-        std::unimplemented!();
-    }
-}
-
+pub(crate) use impl_traits;
