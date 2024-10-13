@@ -1,6 +1,10 @@
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use crate::traits::Iterable;
 
+pub struct SincBuilder {
+
+}
+
 pub struct SincIterator<F> 
 where 
     F: Float + FloatConst + NumAssign + 'static + AsPrimitive<usize>,
@@ -9,7 +13,8 @@ where
     fs: F,
     f: F,
     offset: F,
-    i: usize
+    i: usize,
+    norm: bool
 }
 
 impl<F> SincIterator<F>
@@ -22,10 +27,25 @@ where
             fs,
             f,
             offset,
-            i: 0
+            i: 0,
+            norm: false
         }
     }
     pub fn from_frequency(fs: F, f: F) -> Self {
+        Self::from_frequency_with_offset(fs, f, F::zero())
+    }
+
+    pub fn from_frequency_with_offset_norm(fs: F, f: F, offset: F) -> Self{
+        Self {
+            fs,
+            f,
+            offset,
+            i: 0,
+            norm: true
+        }
+    }
+    
+    pub fn from_frequency_norm(fs: F, f: F) -> Self {
         Self::from_frequency_with_offset(fs, f, F::zero())
     }
 
@@ -56,11 +76,15 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let t = self.i.as_() / self.fs;
         self.i += 1;
-        let phase = F::TAU() * self.f * t;
+        let phase = (F::TAU() * self.f * t) + self.offset;
         if phase == F::zero() {
             Some(F::one())
         } else {
-            Some(phase.sin() / phase)
+            if self.norm {
+                Some(Self::sinc_norm(phase))
+            } else {
+                Some(Self::sinc(phase))
+            }
         }
     }
 }
@@ -100,3 +124,5 @@ where
         )
     }
 }
+
+super::impl_traits!(Sinc);

@@ -31,7 +31,7 @@ where
 
 pub fn fft<F, I, C>(x: &I) -> C
 where
-    F: Float + FloatConst + NumAssign + 'static + std::fmt::Debug,
+    F: Float + FloatConst + NumAssign + 'static,
     for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
     for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     for<'c><C as Iterable>::Iterator<'c>: DoubleEndedIterator,

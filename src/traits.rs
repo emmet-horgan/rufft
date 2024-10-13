@@ -49,7 +49,6 @@ where
     }
 }
 
-
 #[cfg(feature = "ndarray")]
 impl<T> Iterable for ndarray::Array1<T>
 where
@@ -77,46 +76,27 @@ where
 pub trait Fft<F: Float + FloatConst + NumAssign + 'static>
 where 
     for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-    for<'c> Self: 'c,
     usize: AsPrimitive<F>,
 {   
-    fn fft_ct<C>(&self) -> C
-    where
+    fn fft<C>(&self) -> C
+    where 
         for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-        for<'c> C: 'c,
         C: IndexMut<usize, Output = Complex<F>>,
+        usize: AsPrimitive<F>
     {
-        fft::ct::fft::<F, Self, C>(self)
+        let n = self.len();
+        if n.is_power_of_two() {
+            fft::ct::fft::<F, Self, C>(self)
+        } else {
+            fft::czt::fft::<F, Self, C>(self)
+        }
     }
-
-    
 }
 
 impl<C, F> Fft<F> for C
 where 
     for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-    for<'c> C: 'c,
     F: Float + FloatConst + NumAssign + 'static,
     usize: AsPrimitive<F>
 {}
 
-
-pub trait TyEq
-where
-    Self: From<Self::Type> + Into<Self::Type>,
-    Self::Type: From<Self> + Into<Self>,
-{
-    type Type;
-}
-
-impl<T> TyEq for T {
-    type Type = T;
-}
-
-pub trait HasInnerFloat {
-    type InnerFloat: Float + FloatConst + NumAssign + 'static;
-}   
-
-impl<T:'static + Float + FloatConst + NumAssign> HasInnerFloat for Complex<T> {
-    type InnerFloat = T;
-}
