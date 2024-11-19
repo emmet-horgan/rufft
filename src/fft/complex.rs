@@ -1,6 +1,5 @@
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use num_complex::Complex;
-use std::ops::{IndexMut, Deref};
 use crate::traits::Iterable;
 
 pub fn dft<F, I>(x: &I) -> I

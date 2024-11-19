@@ -86,7 +86,7 @@ where
 
 
 /// Wraps an angle in radians to the range (-π, π].
-fn wrap_phase<F: Float + FloatConst + NumAssignOps>(angle: F) -> F {
+pub fn wrap_phase<F: Float + FloatConst + NumAssignOps>(angle: F) -> F {
     if angle >= F::PI() {
         angle - F::TAU()
     } else if angle <= -F::PI() {
