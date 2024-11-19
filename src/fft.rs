@@ -100,7 +100,7 @@ fn wrap_phase<F: Float + FloatConst + NumAssignOps>(angle: F) -> F {
 mod tests {
     
     use super::*;
-    use crate::io::{read_json, Data, Json};
+    use crate::test_utils::{read_json, Data, Json};
     use crate::test_utils::{ self as test, test_dft, test_idft };
     use ndarray::prelude::*;
 
