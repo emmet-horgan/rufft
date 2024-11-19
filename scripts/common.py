@@ -43,7 +43,7 @@ class PathManage:
                     return cur
 
     @staticmethod
-    def findroot(root="RusticFourier"):
+    def findroot(root="rufft"):
         path = list(Path(os.getcwd()).parts)
         if root not in path:
             print(path)
