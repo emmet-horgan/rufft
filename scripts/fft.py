@@ -5,7 +5,7 @@ from common import PathManage, Description, gen_sine_data, write_as_json, gen_co
 
 PATH = "datasets/fft"
 
-def gen_fft_sine_data():
+def gen_fft_sine_data(plot=True):
     
     # Arbitrary values
     fsine = 2.0
@@ -30,12 +30,13 @@ def gen_fft_sine_data():
 
     desc.func = "fft"
 
-    plt.plot(np.flip(fftfreq(int(np.ceil(duration * fsample)), 1/fsample)), mag)
-    plt.show()
+    if plot:
+        plt.plot(np.flip(fftfreq(int(np.ceil(duration * fsample)), 1/fsample)), mag)
+        plt.show()
 
     write_as_json(desc)
 
-def gen_fft_complex_exp_data():
+def gen_fft_complex_exp_data(plot=True):
     
     # Arbitrary values
     fsine = 2.0
@@ -63,8 +64,9 @@ def gen_fft_complex_exp_data():
 
     desc.func = "complex_fft"
 
-    plt.plot(np.flip(fftfreq(int(np.ceil(duration * fsample)), 1/fsample)), mag)
-    plt.show()
+    if plot:
+        plt.plot(np.flip(fftfreq(int(np.ceil(duration * fsample)), 1/fsample)), mag)
+        plt.show()
 
     write_as_json(desc)
 
@@ -89,8 +91,13 @@ def gen_fftfreq_data():
 def gen_zero_pad_data():
     pass
 
-if __name__ == "__main__":
-    gen_fft_sine_data()
+def main(plot):
+    gen_fft_sine_data(plot=plot)
     gen_fftfreq_data()
     gen_zero_pad_data()
-    gen_fft_complex_exp_data()
+    gen_fft_complex_exp_data(plot=plot)
+
+if __name__ == "__main__":
+    from common import argparse_setup
+    args = argparse_setup()
+    main(args.plot)

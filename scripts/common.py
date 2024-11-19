@@ -6,12 +6,25 @@ import json
 titlespec = {
     "fontname": "DejaVu Sans",
     "fontsize": 14,
-    }
+}
 axesspec = {
     "fontname": "DejaVu Sans",
     "fontstyle": "oblique",
     "fontsize": 12,
-    }
+}
+
+def argparse_setup():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--no-plot',
+        help='Data will not be plotted with this flag',
+        action='store_false',
+        default=True,
+        dest='plot'
+    )
+    args = parser.parse_args()
+    return args
 
 class PathManage:
 
