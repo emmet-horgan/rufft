@@ -14,7 +14,7 @@ where
         return Err(());
     }
     let num_padding = len - n;
-    let pad_iter = std::iter::repeat(padding).take(num_padding);
+    let pad_iter = core::iter::repeat(padding).take(num_padding);
     Ok(I::from_iter(x.iter().cloned().chain(pad_iter)))
 }
 

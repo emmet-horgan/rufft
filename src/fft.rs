@@ -1,12 +1,15 @@
 pub mod ct;
 pub mod czt;
 pub mod complex;
-use num::Integer;
+use num_integer::Integer;
 use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps };
-use std::ops::IndexMut;
+use core::ops::IndexMut;
 use crate::traits::Iterable;
 
+/// Compute the discrete time fourier transform of the real input. Returns
+/// a closure which accepts a collection of sample frequencies and returns 
+/// a collection of the fft values
 pub fn dtft<F, I, C>(x: I) -> impl Fn(I) -> C
 where 
     F: Float + FloatConst + NumAssign + 'static,
@@ -26,7 +29,8 @@ where
     }
 }
 
-
+/// Computes the inverse discrete fourier transform of the real input. Note that
+/// no normalization is done here but that is subject to change
 pub fn idft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -37,6 +41,7 @@ where
     complex::idft_internal(x).iter().map(|x| x.re).collect()
 }
 
+/// Computes the discrete fourier tranform on the real valued input collection
 pub fn dft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -55,6 +60,8 @@ where
     }).collect()
 }
 
+/// Computes the frequency values associated fft based on `n` the length
+/// of the collection and `d` the sampling period
 pub fn fftfreq<F, I>(n: usize, d: F) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -65,6 +72,9 @@ where
     (0..n).map(|i| i.as_() / time).collect()
 }
 
+/// Computes the frequency values associated fft based on `n` the length
+/// of the collection and `d` the sampling period but the frequency values
+/// are symmetric about the y-axis i.e. same the `scipy`'s `fftfreq` function
 pub fn fftfreq_balanced<F, I>(n: usize, d: F) -> I 
 where
     F: Float + FloatConst + NumAssign + 'static,

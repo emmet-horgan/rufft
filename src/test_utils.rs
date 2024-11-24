@@ -2,10 +2,10 @@ use num_traits::{Float, FloatConst, NumAssignOps, AsPrimitive};
 use num_complex::Complex;
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::env;
 use std::fs;
-use walkdir::{DirEntry, WalkDir};
+use walkdir::WalkDir;
 
 struct PathManage {
     _root: PathBuf
@@ -19,13 +19,6 @@ impl PathManage {
 
     fn split(path: &PathBuf) -> Vec<&str> {
         path.components().map(|c| c.as_os_str().to_str().unwrap()).collect::<Vec<&str>>()
-    }
-
-    fn is_hidden(entry: &DirEntry) -> bool {
-        entry.file_name()
-             .to_str()
-             .map(|s| s.starts_with("."))
-             .unwrap_or(false)
     }
 
     fn path(&self, path: &str) -> Option<PathBuf> {

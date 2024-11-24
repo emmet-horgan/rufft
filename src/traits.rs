@@ -1,6 +1,6 @@
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
-use std::{ ops::IndexMut, ops::Deref };
+use core::{ ops::IndexMut, ops::Deref };
 use crate::fft;
 
 pub trait Iterable: FromIterator<Self::OwnedItem>
@@ -26,6 +26,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> Iterable for Vec<T>
 where 
     for<'c> T: 'c,
@@ -36,7 +37,7 @@ where
         T: 'c;
     type OwnedItem = T;
 
-    type Iterator<'c> = std::slice::Iter<'c, T>
+    type Iterator<'c> = core::slice::Iter<'c, T>
     where
         T: 'c;
     
@@ -49,7 +50,7 @@ where
     }
 }
 
-#[cfg(feature = "ndarray")]
+#[cfg(all(feature = "ndarray", feature = "std"))]
 impl<T> Iterable for ndarray::Array1<T>
 where
     for<'c> T: 'c,

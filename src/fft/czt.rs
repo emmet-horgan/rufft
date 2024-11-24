@@ -1,6 +1,6 @@
 use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
-use std::ops::IndexMut;
+use core::ops::IndexMut;
 use super::ct;
 use crate::itertools::complex::zero_pad;
 use crate::traits::Iterable;
@@ -29,6 +29,7 @@ where
     }).collect()
 }
 
+/// Computes the chirp-z fast fourier transform algorithm on the real input collection
 pub fn fft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,

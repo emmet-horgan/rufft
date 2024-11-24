@@ -1,10 +1,11 @@
 pub mod complex;
 use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
-use std::ops::IndexMut;
+use core::ops::IndexMut;
 use itertools::izip;
 use crate::traits::Iterable;
 
+/// Computes the cooley-tukey fast fourier transform of the real input collection
 pub fn fft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -33,7 +34,7 @@ where
         let y_even: C = fft(&x_even);
         let y_odd: C = fft(&x_odd);
 
-        let mut y = C::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(n));
+        let mut y = C::from_iter(core::iter::repeat(Complex::new(zero, zero)).take(n));
         izip!(y_even.iter(), y_odd.iter())
             .enumerate()
             .for_each(|(j, (even, odd))| {
@@ -47,7 +48,9 @@ where
 }
 
 
-
+/// Compute the inverse cooley-tukey transform of the complex input collection and returns
+/// the real valued output collection
+/// The output *is* normalized.
 pub fn ifft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,

@@ -2,19 +2,12 @@ use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use num_complex::Complex;
 use crate::traits::Iterable;
 
+/// Compute the discrete fourier transform on the complex valued input collection
 pub fn dft<F, I>(x: &I) -> I
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    //for<'c> I: 'c,
-    // Bound I to to an iterable collection of F
-    //I: FromIterator<Complex<F>> + Clone,
-    //for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
-    //for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
-    // Ensure a usize can be converted to F, ideally this can be removed
     usize: AsPrimitive<F>,
-    // Bound C to a collection of Complex<F>
 {
     let n = x.len();
     let zero = F::zero();
@@ -28,18 +21,12 @@ where
     }).collect()
 }
 
+/// Internal inverse discrete fourier transfom which returns a complex collection
+/// and does not normalize the output
 pub(crate) fn idft_internal<'a, F, I>(x: &'a I) -> I
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    //for<'c> I: 'c,
-    //for<'c> <I as Iterable>::Item<'c>: Deref<Target = Complex<F>>,
-    // Bound I to to an iterable collection of F
-    //I: FromIterator<Complex<F>> + Clone,
-    //&'a I: IntoIterator<Item = &'a Complex<F>>,
-    //<&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
-    // Ensure a usize can be converted to F, ideally this can be removed
     usize: AsPrimitive<F>,
 {
     let n = x.len();
@@ -50,24 +37,16 @@ where
             let phase = Complex::<F>::new(zero, (twopi * j.as_() * i.as_()) / n.as_());
             *f * phase.exp()
         }).map(|v| v).sum::<Complex<F>>() / n.as_()
-    }).collect() // Experiment with the internal function returning an iterator 
-    // of some kind. Need to reduce the amount of collections
+    }).collect()
 }
 
+/// Computes the inverse discrete fourier on the complex valued input collection returning
+/// a complex output colllection. Note that the output is currently not normalised but 
+/// that is subject to change
 pub fn idft<F, I>(x: &I) -> I
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to to an iterable collection of F
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    //or<'c> I: 'c,
-    //I: Iterable<OwnedItem = Complex<F>>,
-    //for<'c> <I as Iterable>::Item<'c>: Deref<Target = Complex<F>>,
-
-    //I: FromIterator<Complex<F>> + Clone,
-    //for<'a> &'a I: IntoIterator<Item = &'a Complex<F>>,
-    //for<'a> <&'a I as IntoIterator>::IntoIter: ExactSizeIterator,
-    // Ensure a usize can be converted to F, ideally this can be removed
     usize: AsPrimitive<F>,
 {
     idft_internal(x)
@@ -77,7 +56,7 @@ where
 mod tests {
     
     use super::*;
-    use crate::test_utils::{ test_complex_dft };
+    use crate::test_utils::test_complex_dft;
     use ndarray::prelude::*;
 
     const ATOL_F64: f64 = 1e-12;

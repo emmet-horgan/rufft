@@ -1,8 +1,25 @@
 # Rufft
-Rufft is a purely rust implementation of several common fast fourier transform algorithms and perhaps some other useful signal processing functions like padding, waveform generation and perhaps the addition of plotting. 
 
-I originally started writing this library for my own educational purposes to improve my rust skills and also to look into these algorithms in more detail. Upon looking into the rust ecosystem for this area, I found that no crate existed computing the FFT over generic collections of a generic floating point type but which was also relatively simple to use. Other crates due achieve this level of abstraction but are very performant focussed such as [RustFFT](https://github.com/ejmahler/RustFFT/tree/master) which gives you many options to choose how to compute the FFT and plans the computation ahead of time. That is a very good method of computing the FFT but I wanted to create something slightly more akin to python's SciPy library which is performant but is easy to use and get up and running. 
+[![ci](https://github.com/emmet-horgan/rufft/workflows/ci/badge.svg)](https://github.com/emmet-horgan/rufft/actions?query=workflow%3Aci)
+[![](https://img.shields.io/crates/v/rufft.svg)](https://crates.io/crates/rufft)
+[![](https://img.shields.io/crates/l/rufft.svg)](https://crates.io/crates/rufft)
+[![](https://docs.rs/rufft/badge.svg)](https://docs.rs/ruﬁfft/)
 
-Rufft provides a trait `Fft` which can be included in your project which will give you access to an `fft` method which will compute the FFT using either the Cooley-Tukey or the Chirp-Z Transform (Bluestein) FFT algorithm, depending on the length of the inptu sequence. All that is required is that your collection type e.g. `Vec` or `ndarray::Array1` implement a trait provided by rufft called `Iterable`. This trait essentially provides a some small methods and bounds that enable the underlying implementation. This project is still in its early stages and changes are constantly being made but I intend to develop it to provide a reasonable set of features useful for signal processing and research.
+Rufft is a purely rust implementation of several common fast fourier transform algorithms. The libary functions operate on collection types which implement a library trait called `Iterable` which provides a method to get an iterator and to get the length of the collection. In the future other convenience modules will be added for things like waveform generation and improvements to the fft implementation to support things like paralleization, and SIMD acceleration
 
-I am still reasonably new to rust so any suggestions or contributions are more than welcome.
+## Usage
+
+```rust
+use rufft::{traits::Fft, Complex};
+
+// Get the FFT of a Vec
+let arr = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+let farr: Vec<Complex<f64>> = arr.fft();
+```
+
+## Motivation
+The project originally started for my own educational purposes to both improve my rust skills and also to implement fast fourier transform algorithms. As time went on I looked at some other more mature rust based FFT libaries such as,
+* [RustFFT](https://crates.io/crates/rustfft)
+* [tfhe-fft](https://crates.io/crates/tfhe-fft)
+
+These projects are great and very performent focussed especially `rustfft` but I realized that I wanted to use something that reflected a much simpler API like `scipy` in the python ecosystem but was still relatively performant, something that could be used in `no_std` environments, static dispatch based rather than dynamic dispatch and is compatible with most collection types and gives control over what types are used internally. 

@@ -1,9 +1,11 @@
 use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
-use std::ops::IndexMut;
+use core::ops::IndexMut;
 use itertools::izip;
 use crate::traits::Iterable;
 
+/// Computes the cooley-tukey fast fourier transform on the complex valued input
+/// collection and outputs a complex valued collection
 pub fn fft<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -29,7 +31,7 @@ where
 
         let y_even: I = fft(&x_even);
         let y_odd: I = fft(&x_odd);
-        let mut y = I::from_iter(std::iter::repeat(zero).take(n));
+        let mut y = I::from_iter(core::iter::repeat(zero).take(n));
         
         izip!(y_even.iter(), y_odd.iter())
             .enumerate()
@@ -43,6 +45,8 @@ where
     }
 }
 
+/// Internal inverse fourier transform implementation which returns a 
+/// complex valued collection
 pub(crate) fn ifft_internal<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -67,7 +71,7 @@ where
 
         let y_even: I = ifft_internal(&x_even);
         let y_odd: I = ifft_internal(&x_odd);
-        let mut y = I::from_iter(std::iter::repeat(Complex::new(zero, zero)).take(n));
+        let mut y = I::from_iter(core::iter::repeat(Complex::new(zero, zero)).take(n));
 
         izip!(y_even.iter(), y_odd.iter())
             .enumerate()
