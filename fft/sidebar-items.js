@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["dft","dtft","fftfreq","fftfreq_balanced","idft","wrap_phase"],"mod":["complex","ct","czt"]};
