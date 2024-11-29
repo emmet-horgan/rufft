@@ -1,26 +1,38 @@
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
-use core::{ ops::IndexMut, ops::Deref };
+use core::ops::{ IndexMut, Deref };
 use crate::fft;
 
+/// Iterable trait to encapsulate collection types which have a length, are 
+/// reversible, and are iterable
 pub trait Iterable: FromIterator<Self::OwnedItem>
 where 
     for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
     for<'c> Self: 'c,
     Self: Clone,
 {
+    /// The owned collection item. For example `f64` for `Vec<f64>`
     type OwnedItem;
+    
+    /// The item produced by the collection's iterator. For example `&f64` for 
+    /// `Vec<f64`
     type Item<'collection>
     where
         Self: 'collection;
 
+    /// The iterator produced by the collection
     type Iterator<'collection>: ExactSizeIterator<Item = Self::Item<'collection>>
         + DoubleEndedIterator<Item = Self::Item<'collection>>
     where
         Self: 'collection;
 
+    /// Create an iterator from the collection over `Self::Item` types
     fn iter<'c>(&'c self) -> Self::Iterator<'c>;
 
+    /// Return the length of the collection. Default implementation provided based
+    /// on the fact that an `ExactSizeIterator` implementation is required but 
+    /// may be more performant to override the implementation
+    #[inline]
     fn len(&self) -> usize {
         self.iter().len()
     }
@@ -73,7 +85,10 @@ where
     }
 }
 
-
+/// Trait containing `fft` method which computes the `fft` of the real valued
+/// collection type and returns a complex value collection. The return collection
+/// type does not need to be the same type as the type the trait is implemented
+/// on
 pub trait Fft<F: Float + FloatConst + NumAssign + 'static>
 where 
     for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F>,

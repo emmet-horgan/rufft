@@ -2,11 +2,11 @@ use num_complex::Complex;
 use num_traits::{Float, FloatConst, NumAssign};
 use crate::traits::Iterable;
 
-pub fn pad<I, F>(x: &I, padding: Complex<F>, len: usize) -> Result<I, ()> 
+/// Clone and pad the complex valued input collection with the floating 
+/// point type `F` to the length `len`
+pub fn pad<F, I>(x: &I, padding: Complex<F>, len: usize) -> Result<I, ()> 
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to to an iterable collection of F
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
 {
     let n = x.iter().len();
@@ -18,11 +18,11 @@ where
     Ok(I::from_iter(x.iter().cloned().chain(pad_iter)))
 }
 
-pub fn pad_to_nearest_power_of_two<I, F>(x: &I, padding: Complex<F>) -> Result<I, ()>
+/// Clone and pad the complex valued input collection with floating point value `F`
+/// to the nearest power of two length
+pub fn pad_to_nearest_power_of_two<F, I>(x: &I, padding: Complex<F>) -> Result<I, ()>
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to to an iterable collection of F
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     I: Clone,
 {
@@ -34,21 +34,20 @@ where
     }
 }
 
-pub fn zero_pad<I, F>(n: usize, x: &I) -> Result<I, ()> 
+/// Clone and zero pad the complex valued input collection to the length `len`
+pub fn zero_pad<F, I>(n: usize, x: &I) -> Result<I, ()> 
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to to an iterable collection of F
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
 {
     Ok(pad(x, Complex::new(F::zero(), F::zero()), n)?)
 }
 
-pub fn zero_pad_to_nearest_power_of_two<I, F>(x: &I) -> Result<I, ()>
+/// Clone and zero pad the complex valued input collection to the nearest power 
+/// of two length
+pub fn zero_pad_to_nearest_power_of_two<F, I>(x: &I) -> Result<I, ()>
 where
-    // Bound F to float types
     F: Float + FloatConst + NumAssign + 'static,
-    // Bound I to to an iterable collection of F
     for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     I: Clone
 {

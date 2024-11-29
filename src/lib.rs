@@ -1,12 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 //! Rufft is a pure rust signal processing library which implements fast fourier transform
-//! algorithms. The primary aims of the library are to be compatible with most any collection
+//! algorithms. The primary aims of the library are to be compatible with most collection
 //! types, be generic over the floating point type in use and be usable in `no_std` environments. 
 //!
 //!
 //!
 //! ### Usage
-//! Rufft provides a trait `rufft::traits::Fft` which is blanket implemented on types which implement
+//! Rufft provides the trait `rufft::traits::Fft` which is blanket implemented on types which implement
 //! the `rufft::traits::Iterable` trait over floating point types i.e. implement the `num_traits::Float` type.
 //! The `Fft` trait provides an `fft` method which returns a collection of the fft results. The compiler
 //! requires some type information to determine the output type e.g. `Vec<f64>` is not the same type
@@ -23,7 +23,7 @@
 //!
 //! Rufft also exposes individual FFT algorithms in the `fft` module. Currently at the time
 //! of writing only the basic discrete fourier transfrom, `dft`, the cooley-tukey fft 
-//! algorithms `fft::ct::fft` and the chirp-z fft `fft::czt::fft`. The inverse transform is 
+//! algorithm `fft::ct::fft` and the chirp-z fft `fft::czt::fft`. The inverse transform is 
 //! currently unsupported for the Chirp-Z transform. I am still learning about fast fourier
 //! transform algorithms and will add more as time goes on. Any contributions there would be
 //! appreciated.
@@ -59,7 +59,9 @@ pub mod traits;
 pub mod itertools;
 
 pub use num_complex::Complex;
+pub use num_traits::{ Float, FloatConst };
 pub use num_complex;
+pub use num_traits;
 
 #[cfg(all(feature = "std", feature = "ndarray"))]
 pub use ndarray;

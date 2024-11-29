@@ -1,3 +1,21 @@
+//! The `fft` module itself contains some basic functions ;ole `dft`, and `idft` functions. Other fast 
+//! fourier transform algorithms are exported through crates like,
+//!     
+//! | Algorithm | Module Name |
+//! | --------- | ----------- |
+//! | Cooley-Tukey | `ct` | 
+//! | Chirp-Z Transform (Bluestein's Algorithm) | `czt` | 
+//! 
+//! The most common use case tends to be computing the FFT of a real-valued input collection
+//! producting a complex output collection. The opposite for computing the IFFT. Thus,
+//! by default implementations should expose an `fft`, and `ifft` function meeting the 
+//! most common use case, and a purely complex implementation is exposed through the 
+//! algorithm's `complex` module. For example, the cooley-tukey implementation exposes
+//! * `ct::fft`
+//! * `ct::ifft`
+//! * `ct::complex::fft`
+//! * `ct::complex::ifft`
+//! 
 pub mod ct;
 pub mod czt;
 pub mod complex;
@@ -7,8 +25,8 @@ use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps };
 use core::ops::IndexMut;
 use crate::traits::Iterable;
 
-/// Compute the discrete time fourier transform of the real input. Returns
-/// a closure which accepts a collection of sample frequencies and returns 
+/// Compute the discrete time fourier transform of the real valued input collection.
+/// Returns a closure which accepts a collection of sample frequencies and returns 
 /// a collection of the fft values
 pub fn dtft<F, I, C>(x: I) -> impl Fn(I) -> C
 where 
@@ -29,8 +47,9 @@ where
     }
 }
 
-/// Computes the inverse discrete fourier transform of the real input. Note that
-/// no normalization is done here but that is subject to change
+/// Computes the inverse discrete fourier transform of the real valued input 
+/// collection.
+/// The output *is* normalized 
 pub fn idft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,

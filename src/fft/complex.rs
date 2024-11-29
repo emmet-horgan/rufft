@@ -21,8 +21,8 @@ where
     }).collect()
 }
 
-/// Internal inverse discrete fourier transfom which returns a complex collection
-/// and does not normalize the output
+/// Internal inverse discrete fourier transfom which returns a complex collection.
+/// Note that the output *is* normalized
 pub(crate) fn idft_internal<'a, F, I>(x: &'a I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -40,9 +40,9 @@ where
     }).collect()
 }
 
-/// Computes the inverse discrete fourier on the complex valued input collection returning
-/// a complex output colllection. Note that the output is currently not normalised but 
-/// that is subject to change
+/// Computes the inverse discrete fourier transform on the complex valued input 
+/// collection returning a complex output colllection. 
+/// The output *is* normalised.
 pub fn idft<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
