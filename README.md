@@ -3,9 +3,9 @@
 [![ci](https://github.com/emmet-horgan/rufft/workflows/ci/badge.svg)](https://github.com/emmet-horgan/rufft/actions?query=workflow%3Aci)
 [![](https://img.shields.io/crates/v/rufft.svg)](https://crates.io/crates/rufft)
 [![](https://img.shields.io/crates/l/rufft.svg)](https://crates.io/crates/rufft)
-[![](https://docs.rs/rufft/badge.svg)](https://docs.rs/ruﬁfft/)
+[![](https://docs.rs/rufft/badge.svg)](https://docs.rs/rufft/)
 
-Rufft is a purely rust implementation of several common fast fourier transform algorithms. The libary functions operate on collection types which implement a library trait called `Iterable` which provides a method to get an iterator and to get the length of the collection. In the future other convenience modules will be added for things like waveform generation and improvements to the fft implementation to support things like paralleization, and SIMD acceleration
+Rufft is a purely rust implementation of several fast fourier transform algorithms. The libary functions operate on collection types which implement a library trait called `Iterable` which provides a method to get an iterator and to get the length of the collection. In the future other convenience modules will be added for things like waveform generation and improvements to the fft implementation to support things like paralleization, and SIMD acceleration
 
 ## Usage
 

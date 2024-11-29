@@ -2,6 +2,14 @@
 name = "rufft"
 version = "0.1.0"
 edition = "2021"
+authors = ["Emmet Horgan"]
+description = "A pure rust FFT library !"
+repository = "https:/github.com/emmet-horgan/rufft"
+keywords = ["fft", "signal-processing", "dsp", "no-std"]
+license = "MIT"
+categories = ["no-std", "science", "mathematics"]
+exclude = ["/.github", "/scripts/"]
+readme = "README.md"
 
 [dependencies]
 num-integer = { version = "0.1.46", default-features = false }
