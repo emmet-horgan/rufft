@@ -13,7 +13,7 @@ jobs:
         steps:
             - uses: actions/checkout@v4
             - uses: actions-rust-lang/setup-rust-toolchain@v1
-            - run: cargo doc
+            - run: cargo doc --no-deps
             - uses: peaceiris/actions-gh-pages@v4
               with:
                 github_token: ${{ secrets.GITHUB_TOKEN }}
