@@ -3,15 +3,16 @@ use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use core::ops::IndexMut;
 use itertools::izip;
-use crate::traits::Iterable;
+use crate::traits::{Iterable, FloatIterable, ComplexFloatIterable};
 
 /// Computes the cooley-tukey fast fourier transform of the real valued input 
 /// collection
 pub fn fft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-    for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: FloatIterable<F>, C: ComplexFloatIterable<F>,
+    //for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    //for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
     C: IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
 {
