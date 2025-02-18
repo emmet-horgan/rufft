@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":["Fft","Iterable"]};
+window.SIDEBAR_ITEMS = {"trait":["ComplexFloatIterable","ComplexFloatIterableMut","ExtendableIterable","Fft","FloatIterable","FloatIterable2d","FloatIterable3d","FloatIterableMut","Iterable"]};
