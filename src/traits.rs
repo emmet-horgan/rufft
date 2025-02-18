@@ -1,7 +1,10 @@
+pub(crate) mod float;
+pub use float::*;
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
 use core::ops::{ IndexMut, Deref };
 use crate::fft;
+
 
 /// Iterable trait to encapsulate collection types which have a length, are 
 /// reversible, and are iterable
@@ -15,7 +18,7 @@ where
     type OwnedItem;
     
     /// The item produced by the collection's iterator. For example `&f64` for 
-    /// `Vec<f64`
+    /// `Vec<f64>`
     type Item<'collection>
     where
         Self: 'collection;
@@ -38,69 +41,37 @@ where
     }
 }
 
-pub trait FloatIterable<F>
+/// Extendable iterable trait that can be implemented on dynamic collect types to 
+/// push values onto the collection
+pub trait ExtendableIterable
 where 
-    F: Float + FloatConst + NumAssign + 'static,
-    for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-{}
-
-impl<F, T> FloatIterable<F> for T 
-where
-    F: Float + FloatConst + NumAssign + 'static,
-    for<'c> T: Iterable<OwnedItem = F, Item<'c> = &'c F>
-{}
-
-pub trait ComplexFloatIterable<F>
-where 
-    F: Float + FloatConst + NumAssign + 'static,
-    for<'c> Self: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-{}
-
-impl<F, T> ComplexFloatIterable<F> for T 
-where
-    F: Float + FloatConst + NumAssign + 'static,
-    for<'c> T: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>
-{}
-
-pub trait FloatIterable2d<F> 
-where 
-    F: Float + FloatConst + NumAssign + 'static,
     Self: Iterable,
     for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
-    for<'c> Self::OwnedItem: Iterable<OwnedItem = F, Item<'c> = &'c F>
+    Self::OwnedItem: Clone
 {
-    const DIMS: usize = 2;
+    fn push(&mut self, item: Self::OwnedItem);
+    fn extend_from_slice(&mut self, other: &[Self::OwnedItem]) {
+        for x in other {
+            self.push(x.clone())
+        }
+    }
 }
 
-impl<F, T> FloatIterable2d<F> for T 
-where
-    F: Float + FloatConst + NumAssign + 'static,
-    T: Iterable,
-    for<'c> T::Item<'c>: Deref<Target = T::OwnedItem>,
-    for<'c> T::OwnedItem: Iterable<OwnedItem = F, Item<'c> = &'c F>
-{}
-
-pub trait FloatIterable3d<F> 
+#[cfg(feature = "std")]
+impl<T> ExtendableIterable for Vec<T>
 where 
-    F: Float + FloatConst + NumAssign + 'static,
-    Self: Iterable,
-    for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
-    for<'c> Self::OwnedItem: Iterable,
-    for<'c> <Self::OwnedItem as Iterable>::OwnedItem: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-    for<'c> <Self::OwnedItem as Iterable>::Item<'c>: Deref<Target = <Self::OwnedItem as Iterable>::OwnedItem>
+    T: Clone,
+    for<'c> T: 'c
 {
-    const DIMS: usize = 3;
-}
+    fn push(&mut self, item: Self::OwnedItem) {
+        self.push(item);
+    }
 
-impl<F, T> FloatIterable3d<F> for T 
-where
-    F: Float + FloatConst + NumAssign + 'static,
-    T: Iterable,
-    for<'c> T::Item<'c>: Deref<Target = T::OwnedItem>,
-    for<'c> T::OwnedItem: Iterable,
-    for<'c> <T::OwnedItem as Iterable>::OwnedItem: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-    for<'c> <T::OwnedItem as Iterable>::Item<'c>: Deref<Target = <T::OwnedItem as Iterable>::OwnedItem>
-{}
+    fn extend_from_slice(&mut self, other: &[Self::OwnedItem]) {
+        self.extend_from_slice(other);
+    }
+}
+    
 
 #[cfg(feature = "std")]
 impl<T> Iterable for Vec<T>

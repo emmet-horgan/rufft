@@ -1,13 +1,13 @@
 use num_complex::Complex;
 use num_traits::{Float, FloatConst, NumAssign};
-use crate::traits::Iterable;
+use crate::traits::ComplexFloatIterable;
 
 /// Clone and pad the complex valued input collection with the floating 
 /// point type `F` to the length `len`
 pub fn pad<F, I>(x: &I, padding: Complex<F>, len: usize) -> Result<I, ()> 
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: ComplexFloatIterable<F>
 {
     let n = x.iter().len();
     if len < n {
@@ -23,8 +23,7 @@ where
 pub fn pad_to_nearest_power_of_two<F, I>(x: &I, padding: Complex<F>) -> Result<I, ()>
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    I: Clone,
+    I: ComplexFloatIterable<F> + Clone,
 {
     let n = x.iter().len();
     if n.is_power_of_two() {
@@ -38,7 +37,7 @@ where
 pub fn zero_pad<F, I>(n: usize, x: &I) -> Result<I, ()> 
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: ComplexFloatIterable<F>
 {
     Ok(pad(x, Complex::new(F::zero(), F::zero()), n)?)
 }
@@ -48,8 +47,7 @@ where
 pub fn zero_pad_to_nearest_power_of_two<F, I>(x: &I) -> Result<I, ()>
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    I: Clone
+    I: ComplexFloatIterable<F> + Clone
 {
     pad_to_nearest_power_of_two(x, Complex::new(F::zero(), F::zero()))
 }
