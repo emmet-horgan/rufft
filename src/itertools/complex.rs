@@ -74,7 +74,7 @@ where
 }
 
 /// Pad the complex valued input collection in place with the complex floating 
-/// point value `Complex<F>` to the nearest power of two length.
+/// point value `Complex<F>` to the nearest power of two length
 pub fn pad_to_nearest_power_of_two_inplace<F, I>(x: &mut I, padding: Complex<F>)
 where
     F: Float + FloatConst + NumAssign + 'static,
@@ -87,8 +87,7 @@ where
 }
 
 /// Zero pad the real valued input collection inplace to the nearest power 
-/// of two length. Meaning the collection will have a final length of 
-/// `x.len() + len`
+/// of two length
 pub fn zero_pad_to_nearest_power_of_two_inplace<F, I>(x: &mut I)
 where
     F: Float + FloatConst + NumAssign + 'static,

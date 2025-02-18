@@ -49,7 +49,11 @@ where
     for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
     Self::OwnedItem: Clone
 {
+    /// Push a `<Self as Iterable>::OwnedItem` type to the collection
     fn push(&mut self, item: Self::OwnedItem);
+
+    /// Extend the collection from a slice of `<Self as Iterable>::OwnedItem` 
+    /// types. Default implementation iterates and uses the `push` method
     fn extend_from_slice(&mut self, other: &[Self::OwnedItem]) {
         for x in other {
             self.push(x.clone())
