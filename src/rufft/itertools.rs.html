@@ -99,9 +99,7 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a></pre></div><pre class="rust"><code><span class="doccomment">//! Signal processing functions which operate on `Iterable` implemenentors. Named 
+<a href="#101" id="101">101</a></pre></div><pre class="rust"><code><span class="doccomment">//! Signal processing functions which operate on `Iterable` implemenentors. Named 
 //! `itertools` after the `itertool` crate
 
 </span><span class="kw">pub mod </span>complex;
@@ -181,8 +179,7 @@
 }
 
 <span class="doccomment">/// Pad the real valued input collection in place with floating point value `F`
-/// to the nearest power of two length. Meaning the collection will have a final 
-/// length of `x.len() + len`
+/// to the nearest power of two length
 </span><span class="kw">pub fn </span>pad_to_nearest_power_of_two_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I, padding: F)
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
@@ -195,8 +192,7 @@
 }
 
 <span class="doccomment">/// Zero pad the real valued input collection inplace to the nearest power 
-/// of two length. Meaning the collection will have a final length of 
-/// `x.len() + len`
+/// of two length
 </span><span class="kw">pub fn </span>zero_pad_to_nearest_power_of_two_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I)
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,

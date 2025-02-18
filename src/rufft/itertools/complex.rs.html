@@ -95,8 +95,7 @@
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
 <a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a></pre></div><pre class="rust"><code><span class="kw">use </span>num_complex::Complex;
+<a href="#97" id="97">97</a></pre></div><pre class="rust"><code><span class="kw">use </span>num_complex::Complex;
 <span class="kw">use </span>num_traits::{Float, FloatConst, NumAssign};
 <span class="kw">use </span><span class="kw">crate</span>::traits::{ ComplexFloatIterable, ComplexFloatIterableMut, ExtendableIterable };
 
@@ -172,7 +171,7 @@
 }
 
 <span class="doccomment">/// Pad the complex valued input collection in place with the complex floating 
-/// point value `Complex&lt;F&gt;` to the nearest power of two length.
+/// point value `Complex&lt;F&gt;` to the nearest power of two length
 </span><span class="kw">pub fn </span>pad_to_nearest_power_of_two_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I, padding: Complex&lt;F&gt;)
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
@@ -185,8 +184,7 @@
 }
 
 <span class="doccomment">/// Zero pad the real valued input collection inplace to the nearest power 
-/// of two length. Meaning the collection will have a final length of 
-/// `x.len() + len`
+/// of two length
 </span><span class="kw">pub fn </span>zero_pad_to_nearest_power_of_two_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I)
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,

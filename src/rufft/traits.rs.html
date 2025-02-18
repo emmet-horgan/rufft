@@ -150,7 +150,11 @@
 <a href="#149" id="149">149</a>
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a></pre></div><pre class="rust"><code><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>float;
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a></pre></div><pre class="rust"><code><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod </span>float;
 <span class="kw">pub use </span>float::<span class="kw-2">*</span>;
 <span class="kw">use </span>num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 <span class="kw">use </span>num_complex::Complex;
@@ -201,8 +205,12 @@
     <span class="kw">for</span>&lt;<span class="lifetime">'c</span>&gt; <span class="self">Self</span>::Item&lt;<span class="lifetime">'c</span>&gt;: Deref&lt;Target = <span class="self">Self</span>::OwnedItem&gt;,
     <span class="self">Self</span>::OwnedItem: Clone
 {
-    <span class="kw">fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="self">Self</span>::OwnedItem);
-    <span class="kw">fn </span>extend_from_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>[<span class="self">Self</span>::OwnedItem]) {
+    <span class="doccomment">/// Push a `&lt;Self as Iterable&gt;::OwnedItem` type to the collection
+    </span><span class="kw">fn </span>push(<span class="kw-2">&amp;mut </span><span class="self">self</span>, item: <span class="self">Self</span>::OwnedItem);
+
+    <span class="doccomment">/// Extend the collection from a slice of `&lt;Self as Iterable&gt;::OwnedItem` 
+    /// types. Default implementation iterates and uses the `push` method
+    </span><span class="kw">fn </span>extend_from_slice(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="kw-2">&amp;</span>[<span class="self">Self</span>::OwnedItem]) {
         <span class="kw">for </span>x <span class="kw">in </span>other {
             <span class="self">self</span>.push(x.clone())
         }
