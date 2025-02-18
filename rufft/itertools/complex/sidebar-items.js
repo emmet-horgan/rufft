@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["pad","pad_to_nearest_power_of_two","zero_pad","zero_pad_to_nearest_power_of_two"]};
+window.SIDEBAR_ITEMS = {"fn":["pad_clone","pad_inplace","pad_to_nearest_power_of_two_clone","pad_to_nearest_power_of_two_inplace","zero_pad_clone","zero_pad_inplace","zero_pad_to_nearest_power_of_two_clone","zero_pad_to_nearest_power_of_two_inplace"]};

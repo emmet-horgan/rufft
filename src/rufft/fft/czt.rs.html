@@ -126,7 +126,7 @@
 <span class="kw">use </span>num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 <span class="kw">use </span>core::ops::IndexMut;
 <span class="kw">use </span><span class="kw">super</span>::ct;
-<span class="kw">use </span><span class="kw">crate</span>::itertools::complex::zero_pad;
+<span class="kw">use </span><span class="kw">crate</span>::itertools::complex::zero_pad_clone;
 <span class="kw">use </span><span class="kw">crate</span>::traits::{ ComplexFloatIterable, FloatIterable };
 
 <span class="kw">fn </span>chirp_complex&lt;F, I&gt;(n: usize) -&gt; I
@@ -175,8 +175,8 @@
     <span class="kw">let </span>b: C = chirp_complex(n);
     <span class="kw">let </span>reflection: C = b.iter().skip(<span class="number">1</span>).take(n - <span class="number">1</span>).rev().cloned().collect();
 
-    <span class="kw">let </span>a = zero_pad(fft_len, <span class="kw-2">&amp;</span>a).expect(<span class="string">"Internal padding error which should be impossible !"</span>);
-    <span class="kw">let </span>b = zero_pad(zero_pad_len, <span class="kw-2">&amp;</span>b).expect(<span class="string">"Internal padding error which should be impossible !"</span>);
+    <span class="kw">let </span>a = zero_pad_clone(<span class="kw-2">&amp;</span>a, fft_len-a.len());
+    <span class="kw">let </span>b = zero_pad_clone(<span class="kw-2">&amp;</span>b, zero_pad_len-b.len());
 
     <span class="kw">let </span>b: C = b.iter().chain(reflection.iter()).cloned().collect();
 

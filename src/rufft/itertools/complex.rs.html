@@ -51,56 +51,146 @@
 <a href="#50" id="50">50</a>
 <a href="#51" id="51">51</a>
 <a href="#52" id="52">52</a>
-<a href="#53" id="53">53</a></pre></div><pre class="rust"><code><span class="kw">use </span>num_complex::Complex;
+<a href="#53" id="53">53</a>
+<a href="#54" id="54">54</a>
+<a href="#55" id="55">55</a>
+<a href="#56" id="56">56</a>
+<a href="#57" id="57">57</a>
+<a href="#58" id="58">58</a>
+<a href="#59" id="59">59</a>
+<a href="#60" id="60">60</a>
+<a href="#61" id="61">61</a>
+<a href="#62" id="62">62</a>
+<a href="#63" id="63">63</a>
+<a href="#64" id="64">64</a>
+<a href="#65" id="65">65</a>
+<a href="#66" id="66">66</a>
+<a href="#67" id="67">67</a>
+<a href="#68" id="68">68</a>
+<a href="#69" id="69">69</a>
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a>
+<a href="#72" id="72">72</a>
+<a href="#73" id="73">73</a>
+<a href="#74" id="74">74</a>
+<a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a></pre></div><pre class="rust"><code><span class="kw">use </span>num_complex::Complex;
 <span class="kw">use </span>num_traits::{Float, FloatConst, NumAssign};
-<span class="kw">use </span><span class="kw">crate</span>::traits::ComplexFloatIterable;
+<span class="kw">use </span><span class="kw">crate</span>::traits::{ ComplexFloatIterable, ComplexFloatIterableMut, ExtendableIterable };
 
-<span class="doccomment">/// Clone and pad the complex valued input collection with the floating 
-/// point type `F` to the length `len`
-</span><span class="kw">pub fn </span>pad&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I, padding: Complex&lt;F&gt;, len: usize) -&gt; <span class="prelude-ty">Result</span>&lt;I, ()&gt; 
+<span class="doccomment">/// Clone and pad the complex valued input collection with the complex floating 
+/// point type `F` by the length `n`. Meaning the output collection will have a 
+/// final length of `x.len() + n`
+</span><span class="kw">pub fn </span>pad_clone&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I, padding: Complex&lt;F&gt;, n: usize) -&gt; I
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
     I: ComplexFloatIterable&lt;F&gt;
 {
-    <span class="kw">let </span>n = x.iter().len();
-    <span class="kw">if </span>len &lt; n {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(());
-    }
-    <span class="kw">let </span>num_padding = len - n;
-    <span class="kw">let </span>pad_iter = core::iter::repeat(padding).take(num_padding);
-    <span class="prelude-val">Ok</span>(I::from_iter(x.iter().cloned().chain(pad_iter)))
+    <span class="kw">let </span>pad_iter = core::iter::repeat(padding).take(n);
+    I::from_iter(x.iter().cloned().chain(pad_iter))
 }
 
-<span class="doccomment">/// Clone and pad the complex valued input collection with floating point value `F`
-/// to the nearest power of two length
-</span><span class="kw">pub fn </span>pad_to_nearest_power_of_two&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I, padding: Complex&lt;F&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;I, ()&gt;
+<span class="doccomment">/// Clone and pad the complex valued input collection with complex floating point 
+/// value `F` to the nearest power of two length
+</span><span class="kw">pub fn </span>pad_to_nearest_power_of_two_clone&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I, padding: Complex&lt;F&gt;) -&gt; I
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
     I: ComplexFloatIterable&lt;F&gt; + Clone,
 {
     <span class="kw">let </span>n = x.iter().len();
     <span class="kw">if </span>n.is_power_of_two() {
-        <span class="prelude-val">Ok</span>(x.clone())
+        x.clone()
     } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>(pad(x, padding, n.next_power_of_two())<span class="question-mark">?</span>) <span class="comment">// Pad to the nearest power of 2
+        pad_clone(x, padding, n.next_power_of_two() - n) <span class="comment">// Pad to the nearest power of 2
     </span>}
 }
 
-<span class="doccomment">/// Clone and zero pad the complex valued input collection to the length `len`
-</span><span class="kw">pub fn </span>zero_pad&lt;F, I&gt;(n: usize, x: <span class="kw-2">&amp;</span>I) -&gt; <span class="prelude-ty">Result</span>&lt;I, ()&gt; 
+<span class="doccomment">/// Clone and zero pad the complex valued input collection by the length `n`. 
+/// Meaning the output collection will have a final length of `x.len() + n`
+</span><span class="kw">pub fn </span>zero_pad_clone&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I, n: usize) -&gt; I
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
     I: ComplexFloatIterable&lt;F&gt;
 {
-    <span class="prelude-val">Ok</span>(pad(x, Complex::new(F::zero(), F::zero()), n)<span class="question-mark">?</span>)
+    pad_clone(x, Complex::new(F::zero(), F::zero()), n)
 }
 
 <span class="doccomment">/// Clone and zero pad the complex valued input collection to the nearest power 
 /// of two length
-</span><span class="kw">pub fn </span>zero_pad_to_nearest_power_of_two&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I) -&gt; <span class="prelude-ty">Result</span>&lt;I, ()&gt;
+</span><span class="kw">pub fn </span>zero_pad_to_nearest_power_of_two_clone&lt;F, I&gt;(x: <span class="kw-2">&amp;</span>I) -&gt; I
 <span class="kw">where
     </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
     I: ComplexFloatIterable&lt;F&gt; + Clone
 {
-    pad_to_nearest_power_of_two(x, Complex::new(F::zero(), F::zero()))
+    pad_to_nearest_power_of_two_clone(x, Complex::new(F::zero(), F::zero()))
+}
+
+<span class="doccomment">/// Pad the complex valued input collection inplace with the complex floating 
+/// point type `Complex&lt;F&gt;` by the length `n`. Meaning the collection will have a 
+/// final length of `x.len() + n`
+</span><span class="kw">pub fn </span>pad_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I, padding: Complex&lt;F&gt;, n: usize) 
+<span class="kw">where
+    </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
+    I: ComplexFloatIterableMut&lt;F&gt; + ExtendableIterable
+{
+    <span class="kw">let </span>pad_iter = core::iter::repeat(padding).take(n);
+    <span class="kw">for </span>p <span class="kw">in </span>pad_iter {
+        x.push(p)
+    }
+}
+
+<span class="doccomment">/// Zero pad the complex valued input collection by the length `n`. Meaning 
+/// the collection will have a final length of `x.len() + n`
+</span><span class="kw">pub fn </span>zero_pad_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I, n: usize)
+<span class="kw">where
+    </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
+    I: ComplexFloatIterableMut&lt;F&gt; + ExtendableIterable
+{
+    pad_inplace(x, Complex::new(F::zero(), F::zero()), n)
+}
+
+<span class="doccomment">/// Pad the complex valued input collection in place with the complex floating 
+/// point value `Complex&lt;F&gt;` to the nearest power of two length.
+</span><span class="kw">pub fn </span>pad_to_nearest_power_of_two_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I, padding: Complex&lt;F&gt;)
+<span class="kw">where
+    </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
+    I: ComplexFloatIterableMut&lt;F&gt; + ExtendableIterable
+{
+    <span class="kw">let </span>n = x.iter().len();
+    <span class="kw">if </span>!n.is_power_of_two() {
+        pad_inplace(x, padding, n.next_power_of_two() - n) <span class="comment">// Pad to the nearest power of 2
+    </span>}
+}
+
+<span class="doccomment">/// Zero pad the real valued input collection inplace to the nearest power 
+/// of two length. Meaning the collection will have a final length of 
+/// `x.len() + len`
+</span><span class="kw">pub fn </span>zero_pad_to_nearest_power_of_two_inplace&lt;F, I&gt;(x: <span class="kw-2">&amp;mut </span>I)
+<span class="kw">where
+    </span>F: Float + FloatConst + NumAssign + <span class="lifetime">'static</span>,
+    I: ComplexFloatIterableMut&lt;F&gt; + ExtendableIterable
+{
+    pad_to_nearest_power_of_two_inplace(x, Complex::new(F::zero(), F::zero()))
 }</code></pre></div></section></main></body></html>
