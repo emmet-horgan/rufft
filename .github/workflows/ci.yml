@@ -17,5 +17,7 @@ jobs:
             - run: |
                 pip install -r scripts/requirements.txt
                 python scripts/main.py --no-plot
+            - name: Install dependencies
+              run: sudo apt-get install -y libfontconfig1-dev pkg-config
             - uses: actions-rust-lang/setup-rust-toolchain@v1
             - run: cargo test
