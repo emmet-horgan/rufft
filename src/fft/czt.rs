@@ -2,7 +2,7 @@ use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use core::ops::IndexMut;
 use super::ct;
-use crate::itertools::complex::zero_pad;
+use crate::itertools::complex::zero_pad_clone;
 use crate::traits::{ ComplexFloatIterable, FloatIterable };
 
 fn chirp_complex<F, I>(n: usize) -> I
@@ -51,8 +51,8 @@ where
     let b: C = chirp_complex(n);
     let reflection: C = b.iter().skip(1).take(n - 1).rev().cloned().collect();
 
-    let a = zero_pad(fft_len, &a).expect("Internal padding error which should be impossible !");
-    let b = zero_pad(zero_pad_len, &b).expect("Internal padding error which should be impossible !");
+    let a = zero_pad_clone(&a, fft_len-a.len());
+    let b = zero_pad_clone(&b, zero_pad_len-b.len());
 
     let b: C = b.iter().chain(reflection.iter()).cloned().collect();
 
