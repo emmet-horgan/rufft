@@ -2,15 +2,14 @@ use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use core::ops::IndexMut;
 use itertools::izip;
-use crate::traits::Iterable;
+use crate::traits::ComplexFloatIterable;
 
 /// Computes the cooley-tukey fast fourier transform on the complex valued input
 /// collection and outputs a complex valued collection
 pub fn fft<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    I: IndexMut<usize, Output = Complex<F>>,
+    I: ComplexFloatIterable<F> + IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
 {
     let n = x.len();
@@ -50,8 +49,7 @@ where
 pub(crate) fn ifft_internal<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    I: IndexMut<usize, Output = Complex<F>>,
+    I: ComplexFloatIterable<F> + IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
 {
     let n = x.len();
@@ -85,12 +83,10 @@ where
     }
 }
 
-pub fn ifft<F, I, C>(x: &I) -> C
+pub fn ifft<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    I: IndexMut<usize, Output = Complex<F>>,
+    I: ComplexFloatIterable<F> + IndexMut<usize, Output = Complex<F>>,
     usize: AsPrimitive<F>,
 {   
     let n: F = x.len().as_();
@@ -100,7 +96,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utils::{ test_complex_fft, test_complex_ifft};
+    use crate::test_utils::{ test_complex_fft, test_complex_ifft };
     use ndarray::prelude::*;
 
     const ATOL_F64: f64 = 1e-12;

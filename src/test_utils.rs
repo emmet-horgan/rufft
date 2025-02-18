@@ -207,7 +207,7 @@ macro_rules! test_complex_ifourier_transform {
         let output: $I = match json_data.output_data {
             crate::test_utils::Data::ComplexVals { mag, phase } => {
                 let input = mag.iter().zip(phase.iter()).map(|(m, p)| num_complex::Complex::from_polar(*m, *p)).collect::<$I>();
-                $func::<$F, $I, $C>(&(input.into()))
+                $func::<$F, $I>(&(input.into()))
             },
             _ => panic!("Read the input data incorrectly")
         };

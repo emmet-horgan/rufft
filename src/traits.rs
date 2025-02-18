@@ -1,7 +1,10 @@
+pub(crate) mod float;
+pub use float::*;
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
 use core::ops::{ IndexMut, Deref };
 use crate::fft;
+
 
 /// Iterable trait to encapsulate collection types which have a length, are 
 /// reversible, and are iterable
@@ -15,7 +18,7 @@ where
     type OwnedItem;
     
     /// The item produced by the collection's iterator. For example `&f64` for 
-    /// `Vec<f64`
+    /// `Vec<f64>`
     type Item<'collection>
     where
         Self: 'collection;
@@ -37,6 +40,38 @@ where
         self.iter().len()
     }
 }
+
+/// Extendable iterable trait that can be implemented on dynamic collect types to 
+/// push values onto the collection
+pub trait ExtendableIterable
+where 
+    Self: Iterable,
+    for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
+    Self::OwnedItem: Clone
+{
+    fn push(&mut self, item: Self::OwnedItem);
+    fn extend_from_slice(&mut self, other: &[Self::OwnedItem]) {
+        for x in other {
+            self.push(x.clone())
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl<T> ExtendableIterable for Vec<T>
+where 
+    T: Clone,
+    for<'c> T: 'c
+{
+    fn push(&mut self, item: Self::OwnedItem) {
+        self.push(item);
+    }
+
+    fn extend_from_slice(&mut self, other: &[Self::OwnedItem]) {
+        self.extend_from_slice(other);
+    }
+}
+    
 
 #[cfg(feature = "std")]
 impl<T> Iterable for Vec<T>
@@ -115,4 +150,3 @@ where
     F: Float + FloatConst + NumAssign + 'static,
     usize: AsPrimitive<F>
 {}
-

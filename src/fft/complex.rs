@@ -1,17 +1,16 @@
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive };
 use num_complex::Complex;
-use crate::traits::Iterable;
+use crate::traits::ComplexFloatIterable;
 
 /// Compute the discrete fourier transform on the complex valued input collection
 pub fn dft<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: ComplexFloatIterable<F>,
     usize: AsPrimitive<F>,
 {
     let n = x.len();
     let zero = F::zero();
-    //let complex_zero = Complex::new(zero, zero);
     let twopi = F::TAU();
     x.iter().enumerate().map(|(i, _)|{ // Change to a range of some kind
         x.iter().enumerate().map(|(j, &f)| {
@@ -26,7 +25,7 @@ where
 pub(crate) fn idft_internal<'a, F, I>(x: &'a I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: ComplexFloatIterable<F>,
     usize: AsPrimitive<F>,
 {
     let n = x.len();
@@ -46,7 +45,7 @@ where
 pub fn idft<F, I>(x: &I) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: ComplexFloatIterable<F>,
     usize: AsPrimitive<F>,
 {
     idft_internal(x)

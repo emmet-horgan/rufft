@@ -23,7 +23,7 @@ use num_integer::Integer;
 use num_complex::Complex;
 use num_traits::{ Float, FloatConst, NumAssign, AsPrimitive, NumAssignOps };
 use core::ops::IndexMut;
-use crate::traits::Iterable;
+use crate::traits::{ ComplexFloatIterable, FloatIterable };
 
 /// Compute the discrete time fourier transform of the real valued input collection.
 /// Returns a closure which accepts a collection of sample frequencies and returns 
@@ -53,8 +53,7 @@ where
 pub fn idft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
-    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    I: ComplexFloatIterable<F>, C: FloatIterable<F>,
     usize: AsPrimitive<F>,
 {
     complex::idft_internal(x).iter().map(|x| x.re).collect()
@@ -64,8 +63,7 @@ where
 pub fn dft<F, I, C>(x: &I) -> C
 where
     F: Float + FloatConst + NumAssign + 'static,
-    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
-    for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+    I: FloatIterable<F>, C: ComplexFloatIterable<F>,
     usize: AsPrimitive<F>,
 {
     let n = x.len();
@@ -85,7 +83,7 @@ pub fn fftfreq<F, I>(n: usize, d: F) -> I
 where
     F: Float + FloatConst + NumAssign + 'static,
     usize: AsPrimitive<F>,
-    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    I: FloatIterable<F>
 {
     let time = d * n.as_();
     (0..n).map(|i| i.as_() / time).collect()
@@ -97,9 +95,8 @@ where
 pub fn fftfreq_balanced<F, I>(n: usize, d: F) -> I 
 where
     F: Float + FloatConst + NumAssign + 'static,
-    usize: AsPrimitive<F>,
-    i32: AsPrimitive<F>,
-    for<'c> I: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    usize: AsPrimitive<F>, i32: AsPrimitive<F>,
+    I: FloatIterable<F>
 {
     let time = d * n.as_();
     let (pos_end, neg_start) = if n.is_even() {
