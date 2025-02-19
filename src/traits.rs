@@ -1,5 +1,7 @@
 pub(crate) mod float;
+pub(crate) mod signal;
 pub use float::*;
+pub use signal::*;
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
 use core::ops::{ IndexMut, Deref };
