@@ -2,7 +2,7 @@ pub(crate) mod float;
 pub use float::*;
 use num_traits::{ NumAssign, Float, FloatConst, AsPrimitive };
 use num_complex::Complex;
-use core::ops::{ IndexMut, Deref };
+use core::ops::{ Deref, DerefMut, IndexMut };
 use crate::fft;
 
 
@@ -23,14 +23,26 @@ where
     where
         Self: 'collection;
 
+    type MutItem<'collection>: DerefMut<Target = Self::OwnedItem>
+    where 
+        Self: 'collection;
+
     /// The iterator produced by the collection
     type Iterator<'collection>: ExactSizeIterator<Item = Self::Item<'collection>>
         + DoubleEndedIterator<Item = Self::Item<'collection>>
     where
         Self: 'collection;
 
+    type MutIterator<'collection>: ExactSizeIterator<Item = Self::MutItem<'collection>>
+        + DoubleEndedIterator<Item = Self::MutItem<'collection>>
+    where
+        Self: 'collection;
+
     /// Create an iterator from the collection over `Self::Item` types
     fn iter<'c>(&'c self) -> Self::Iterator<'c>;
+
+    /// Create a mutable iterator from the collection over `Self::MutItem` types
+    fn iter_mut<'c>(&'c mut self) -> Self::MutIterator<'c>;
 
     /// Return the length of the collection. Default implementation provided based
     /// on the fact that an `ExactSizeIterator` implementation is required but 
@@ -47,6 +59,7 @@ pub trait ExtendableIterable
 where 
     Self: Iterable,
     for<'c> Self::Item<'c>: Deref<Target = Self::OwnedItem>,
+    for<'c> Self::MutItem<'c>: DerefMut<Target = Self::OwnedItem>,
     Self::OwnedItem: Clone
 {
     /// Push a `<Self as Iterable>::OwnedItem` type to the collection
@@ -86,14 +99,23 @@ where
     type Item<'c> = &'c T
     where
         T: 'c;
+    type MutItem<'c> = &'c mut T;
     type OwnedItem = T;
 
     type Iterator<'c> = core::slice::Iter<'c, T>
     where
         T: 'c;
     
+    type MutIterator<'c> = core::slice::IterMut<'c, T>
+    where
+        T: 'c;
+    
     fn iter<'c>(&'c self) -> Self::Iterator<'c> {
         self.as_slice().iter()
+    }
+
+    fn iter_mut<'c>(&'c mut self) -> Self::MutIterator<'c> {
+        self.as_mut_slice().iter_mut()
     }
 
     fn len(&self) -> usize {
@@ -110,13 +132,19 @@ where
     type Item<'c> = &'c T
     where
         T: 'c;
+    type MutItem<'c> = &'c mut T;
     type OwnedItem = T;
     type Iterator<'c> = ndarray::iter::Iter<'c, T, ndarray::Ix1>
     where
         T: 'c;
+    type MutIterator<'c> = ndarray::iter::IterMut<'c, T, ndarray::Ix1>;
 
     fn iter<'c>(&'c self) -> Self::Iterator<'c> {
         self.iter()
+    }
+
+    fn iter_mut<'c>(&'c mut self) -> Self::MutIterator<'c> {
+        self.iter_mut()
     }
 
     fn len(&self) -> usize {
@@ -130,12 +158,16 @@ where
 /// on
 pub trait Fft<F: Float + FloatConst + NumAssign + 'static>
 where 
-    for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    for<'c> Self: Iterable<OwnedItem = F, Item<'c> = &'c F, MutItem<'c> = &'c mut F>,
     usize: AsPrimitive<F>,
 {   
     fn fft<C>(&self) -> C
     where 
-        for<'c> C: Iterable<OwnedItem = Complex<F>, Item<'c> = &'c Complex<F>>,
+        for<'c> C: Iterable<
+            OwnedItem = Complex<F>, 
+            Item<'c> = &'c Complex<F>,
+            MutItem<'c> = &'c mut Complex<F>
+        >,
         C: IndexMut<usize, Output = Complex<F>>,
         usize: AsPrimitive<F>
     {
@@ -150,7 +182,7 @@ where
 
 impl<C, F> Fft<F> for C
 where 
-    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F>,
+    for<'c> C: Iterable<OwnedItem = F, Item<'c> = &'c F, MutItem<'c> = &'c mut F>,
     F: Float + FloatConst + NumAssign + 'static,
     usize: AsPrimitive<F>
 {}

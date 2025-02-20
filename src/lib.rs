@@ -57,6 +57,7 @@
 pub mod fft;
 pub mod traits;
 pub mod itertools;
+pub mod waveforms;
 
 pub use num_complex::Complex;
 pub use num_traits::{ Float, FloatConst };
