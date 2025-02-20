@@ -68,7 +68,8 @@
 <a href="#67" id="67">67</a>
 <a href="#68" id="68">68</a>
 <a href="#69" id="69">69</a>
-<a href="#70" id="70">70</a></pre></div><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">"std"</span>), no_std)]
+<a href="#70" id="70">70</a>
+<a href="#71" id="71">71</a></pre></div><pre class="rust"><code><span class="attr">#![cfg_attr(not(feature = <span class="string">"std"</span>), no_std)]
 </span><span class="doccomment">//! Rufft is a pure rust signal processing library which implements fast fourier transform
 //! algorithms. The primary aims of the library are to be compatible with most collection
 //! types, be generic over the floating point type in use and be usable in `no_std` environments. 
@@ -127,6 +128,7 @@
 </span><span class="kw">pub mod </span>fft;
 <span class="kw">pub mod </span>traits;
 <span class="kw">pub mod </span>itertools;
+<span class="kw">pub mod </span>waveforms;
 
 <span class="kw">pub use </span>num_complex::Complex;
 <span class="kw">pub use </span>num_traits::{ Float, FloatConst };

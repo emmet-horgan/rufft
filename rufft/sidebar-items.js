@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["fft","itertools","traits"],"struct":["Complex"],"trait":["Float","FloatConst"]};
+window.SIDEBAR_ITEMS = {"mod":["fft","itertools","traits","waveforms"],"struct":["Complex"],"trait":["Float","FloatConst"]};
