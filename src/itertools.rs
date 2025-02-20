@@ -4,7 +4,7 @@
 pub mod complex;
 
 use num_traits::{ Float, FloatConst, NumAssign };
-use crate::traits::{ FloatIterable, FloatIterableMut, ExtendableIterable };
+use crate::traits::{ FloatIterable, ExtendableIterable };
 
 /// Clone and pad the real valued input collection with the floating 
 /// point type `F` by the length `n`. Meaning the output collection will have a 
@@ -59,7 +59,7 @@ where
 pub fn pad_inplace<F, I>(x: &mut I, padding: F, n: usize) 
 where
     F: Float + FloatConst + NumAssign + 'static,
-    I: FloatIterableMut<F> + ExtendableIterable
+    I: FloatIterable<F> + ExtendableIterable
 {
     let pad_iter = core::iter::repeat(padding).take(n);
     for p in pad_iter {
@@ -72,7 +72,7 @@ where
 pub fn zero_pad_inplace<F, I>(x: &mut I, n: usize)
 where
     F: Float + FloatConst + NumAssign + 'static,
-    I: FloatIterableMut<F> + ExtendableIterable
+    I: FloatIterable<F> + ExtendableIterable
 {
     pad_inplace(x, F::zero(), n)
 }
@@ -82,7 +82,7 @@ where
 pub fn pad_to_nearest_power_of_two_inplace<F, I>(x: &mut I, padding: F)
 where
     F: Float + FloatConst + NumAssign + 'static,
-    I: FloatIterableMut<F> + ExtendableIterable
+    I: FloatIterable<F> + ExtendableIterable
 {
     let n = x.iter().len();
     if !n.is_power_of_two() {
@@ -95,7 +95,7 @@ where
 pub fn zero_pad_to_nearest_power_of_two_inplace<F, I>(x: &mut I)
 where
     F: Float + FloatConst + NumAssign + 'static,
-    I: FloatIterableMut<F> + ExtendableIterable
+    I: FloatIterable<F> + ExtendableIterable
 {
     pad_to_nearest_power_of_two_inplace(x, F::zero())
 }
